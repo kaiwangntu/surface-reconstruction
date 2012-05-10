@@ -1,0 +1,155 @@
+1 For the 2D curve deformation in Creation mode, force the constraint points to specified positions after the curves have been deformed, to avoid the unwanted movement of the constraint points when they belong to the ROI of other constraint points (in CCrossSectionProc class)
+2 Add the computed curve network to the overall curve network when the user right-clicked it.
+***********************************************************
+1 auto view rotation
+2 cross section selection & processing
+***********************************************************
+1 in the Creation funtion, no further adjustment is needed, the generated surface will interpolate the sketched curves directly.
+***********************************************************
+1 add tunneling function
+2 add export/import scene parameters function, to help save the parameters and images when doing snapshot
+3 in deformation mode, render the handle/ROI/static vertices separately
+***********************************************************
+1 add wedge edge-based deformation class
+2 use new data structure to calculate dual mesh deformation
+3 modified the readobj function, allowing reading faces with more than 3 vertices
+4 add new data structure to calculate wedge edge mesh
+5 fix a bug on setting the curve type(deformed handle curve & its projection) for deformation mode
+6 update geometry according to Loop subdivision in mesh local refinement (using both original loop and joe warren's scheme)
+***********************************************************
+1 add more items on control panel, for the rendering of planes
+2 add reference sphere for deformation
+3 for the rendering of reference planes and sphere, change place of the blend function
+***********************************************************
+1 in flexible deformation,change the transformation matrix of Laplacian vector from SR into RSR,but no apparent improvement obtained
+2 change the background into white,the blending functions are carefully set when rendering planes in Creation,deformation and extrusion
+3 add test mode for showing the input line preprocessing
+4 add naive Laplacian for 2D curve(for closed curve,both local and global)
+5 for Mesh Creation,separate the drawing and sewing function
+6 for Mesh Creation,render the intersection points between the curves and planes
+***********************************************************
+1 use "double" to solve LSE problem since "float" may get error 
+2 flexibility to adjust the size of the reference plane in deformation&extrusion
+3 add three functions of interpolating the flexible deformation algorithm
+4 judge if a loaded file has been modified
+***********************************************************
+1 use "float" to solve LSE problem to speed up
+2 add uniform scale of the transformation matrix for Laplacian(both vertex-based and edge-based)
+***********************************************************
+1 put dual mesh deformation into a separate class,add iterative dual mesh laplacian deformation
+2 add iterative edge-based laplacian deformation
+3 add iterative vertex-based laplacian deformation
+4 add a "Code Recycle Bin" text for storing some code segment
+5 add TAUCS,delete cpplapack
+6 add a self-defined sparse matrix multiplication class(still slow)
+***********************************************************
+1 use cpplapack instead of clapack
+2 add dual mesh deformation and dual mesh rendering
+3 move the variables such as 3d axis shown from the view class to the doc class
+***********************************************************
+1 modify the framework of the program acoording to doc/view
+2 delete View2D class
+3 add color mode for curvature render, move the edit mode and color mode to the doc class
+4 add control panel UI&class
+5 add laplacian smooth
+6 for rendering mean curvature, make the color levels corresponding to fixed curvature values
+7 add snapshot
+8 add two ways of selecting ROI: (1) drawing a closed circle, the vertices projecting within this circle are ROI(hot key: R)
+(2) painting strokes, the vertices of the painted triangles are ROI(hot key: P)
+add clear ROI function in SetRange class
+9 add smoothing mode and local Laplacian smooth
+10 add Taubin lambda\mu smooth algorithm
+11 add gaussian curvature render
+***********************************************************
+1 do not remesh when drawing handle curve in deformation, use least square instead of constrained least square when computing
+2 Finish 3D->2D->3D code in deformation
+3 Add Laplacian smoothing after extrusion
+4 Add another stroke indicating which part of the mesh to cut in Cutting(shortcut key: r)
+5 Add computation and render of mean curvature
+***********************************************************
+1 testified if det(Ri)==1 in rigid deformation
+2 add Rigid and rotated Laplacian deformation
+3 add flexible deformation algorithm
+4 For the handle curve and its deformed positions, do not reverse the points order, just mark the start point
+5 add console window for debugging
+************************************************************
+1 integrate naive uniform&weighted Laplacian deformation
+2 Add uniform Rigid Deformation part(the result hasn't been verified)
+************************************************************
+1 Add CLAPACK and SMatrix
+2 Add naive uniform/weighted Laplacian deformation(without rotation and scale considered)
+************************************************************
+1 add snapshot function to 3D view which may be useful for writing paper
+************************************************************
+1 add local refine after extrusion
+2 enable to draw the projection of the deformation curve
+3 modify the FindROIVertices function to enable choosing ROI vertices in arbitrary range(not limited to <1)
+************************************************************
+1 add four modes(Creation, Deformation, Extrusion, Cutting) to improve UI
+************************************************************
+1 Enveloped each class(Creation,Deformation,Extrusion,Cutting)
+************************************************************
+1 Deformation solved temporary
+2 Reference plane could be translated in Creation
+3 Bounding Profiles of the Created mesh are rendered
+4 Do not scale the mesh to below 1 when calculating its normals
+*************************************************************
+1 The CCW problem of converting from Lu Liu's datastructure to CGAL is solved by checking the material of each facet.
+2 Deformation Probelm remains unsolved.
+*************************************************************
+1 Add MeshCreation class,able to build an object from 1, 2 or 3 closed stroke on different cross-sections
+Problem unsolved:
+(1) how to make the ring bound the mesh closely as the original code do
+(2) some functions in GeometryAlgorithm and other classes may change to static
+*************************************************************
+1 For deformation, the user could draw a closed stroke surrounding the mesh and edit it
+2 Fix a bug: For deformation in 3D space, the deform curve the user draws is actually the projection of the deform curve, the handle curve should move a vector as the projection moves
+*************************************************************
+1 add the MeshCutting class to realize the cutting function
+2 add the MeshDeformation class to put all the functions and variables related to deformation into this class
+*************************************************************
+1 add arcball control
+*************************************************************
+1 the plane on which the user drawn the extrusion silhouette could be able to rotate around the extrusion closed curve
+2 put all variables related to extrusion from the View class to the Extrusion class
+**************************************************************
+1 finish the extrusion part
+2 the plane on which the user drawn the extrusion silhouette should also be able to rotate around the extrusion closed curve(unfinished)
+**************************************************************
+1 add CMeshExtrusion class,finish the basic extrusion operation except pointing the new positions of the extruded vertices(unfinished)
+***************************************************************
+1 fixed two bugs of extrusion(one in DeleteExtraPointsOnFacet function,one in MakeClosedStroke2d function)
+2 overload the DeleteExtraPointsOnFacet function to make both the open(for deform) and closed stroke(for extrusion) is valid
+***************************************************************
+1 For extrusion,finish drawing a closed curve on the mesh and get the handle vertices(may be bugs exist,need more check).
+2 For the deform part,the handle curve also needs to be checked as in extrusion, to ensure that each triangle facet has only one handle vertex(unfinished)
+****************************************************************
+1 finish the 2D part of the creation function
+CMeshCreation class(unfinished)
+2 add refpoints when computing best-fitting plane,to make the plane by default always perpendicular to the screen
+****************************************************************
+1 add CMeshCreation class to create mesh(unfinished)
+2 add CPaintingOnMesh class to paint on mesh,ensure that each point of the user input handle  curve is the vertex of the mesh.However,the result is still unsatisfying.
+****************************************************************
+1 deform curve in 3d could be translated
+2 after each deformation,the neighbor vertices of the handles are recalculated
+*****************************************************************
+1 Add local refine function
+*****************************************************************
+1 compute the boundary points of BFplane directly in 3D
+2 exclude the handle vertices when computing the neighbor vertices of the handle
+*****************************************************************
+1 in 3D window,when the BFplane rotate,the modify curve will rotate with it
+2 after calculating the BFplane,redraw the 3D window
+*****************************************************************
+1 Use a SDI framework instead of the Dialog
+2 Use middle button to zoom in/out.Add Cursor icon to rotate,translate,zoom
+
+*****************************************************************
+1 add resample function of the user input curve
+2 resample the modify curve to make its number equal to that of the original curve,so that the modify points just match the original points
+
+*****************************************************************
+1 show neighbor vertices only when SetRange dialog exists
+2 calculate the neighbor vertices everytime after the range is set
+3 use timer in 3D&2D windows instead of MouseMove msg to make further process of sketch strokes possible
