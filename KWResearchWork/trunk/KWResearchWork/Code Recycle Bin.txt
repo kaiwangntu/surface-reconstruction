@@ -1,3 +1,46 @@
+				if (bIntSctNonNb)//continue to shrink the cylinder length
+				{
+					continue;
+				}
+				else//move each boundary point towards the extruded center, to make them totally inside the subspace
+				{
+					for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
+					{
+						//if the boundary point is already inside,keep fixed
+						if (ExtrudePwh.outer_bound_flag.at(i)==CGAL::ON_BOUNDED_SIDE)
+						{
+							//test
+							this->vecTestPoint.push_back(ExtrudePwh.outer_boundary.at(i));
+
+							continue;
+						}
+						//else, move towards the extruded center
+						else
+						{
+							//scale
+							Vector_3 VectPointToCsCenter=CSCenter-Pwh3DIn.outer_boundary.at(i);
+							for (int iScale=0;iScale<iScaleStep;iScale++)
+							{
+								Point_3 ScalePoint=ExtrudePwh.outer_boundary.at(i)+VectPointToCsCenter*(float)iScale/(float)iScaleStep;
+
+								//test
+								this->vecTestPoint.push_back(ScalePoint);
+
+
+								if (JudgePointInsideSS(ScalePoint,vecShrinkSSFaceTri))
+								{
+									ExtrudePwh.outer_boundary.at(i)=ScalePoint;
+									ExtrudePwh.outer_bound_flag.at(i)=CGAL::ON_BOUNDED_SIDE;
+									break;
+								}
+							}
+						}
+					}
+					//test
+					//assert(CheckCylinderInsideSS(vecSSFaceTri,vecShrinkSSFaceTri,ExtrudePwh));
+				}
+
+
 
 bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri, 
 							 Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter)
