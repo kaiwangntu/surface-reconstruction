@@ -399,6 +399,8 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 					}
 					else
 					{
+
+
 						//get the intersection point between the segment connecting the extruded point and center
 						//& the subspace
 						Segment_3 ConnectSeg(ExtrudePwh.outer_boundary.at(i),TransCenter);
