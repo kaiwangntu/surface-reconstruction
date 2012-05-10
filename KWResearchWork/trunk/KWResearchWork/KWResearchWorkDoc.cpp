@@ -625,6 +625,14 @@ void CKWResearchWorkDoc::OnSketchMode()
 void CKWResearchWorkDoc::OnHelpTest()
 {
 	// TODO: Add your command handler code here
+	Point_3 Pnt0(3999,1924,-2024);
+	Point_3 Pnt1(703,222,-1092);
+	Point_3 Pnt2(-533,1360,2564);
+	Triangle_3 Tri(Pnt0,Pnt1,Pnt2);
+	Plane_3 Pln0=Tri.supporting_plane();
+	DBWindowWrite("%f %f %f %f\n",Pln0.a(),Pln0.b(),Pln0.c(),Pln0.d());
+
+
 	vector<int> vecInitNum;
 	vecInitNum.push_back(1);
 	vecInitNum.push_back(9);
