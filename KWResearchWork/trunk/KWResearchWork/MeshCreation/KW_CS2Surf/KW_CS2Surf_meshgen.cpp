@@ -47,7 +47,7 @@ void KW_CS2Surf::GenInitMesh()
 	}
 
 	//test
-	return;
+	//return;
 
 	//stitch the submeshes together
 	StitchMesh(this->vecvecSubPoint,this->vecvecSubSurf,this->InitPolyh);
@@ -56,10 +56,10 @@ void KW_CS2Surf::GenInitMesh()
 bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<vector<int>>& vecSubSurf,vector<vector<Point_3>>& vecvecFacePoint)
 {
 	//test
-	if (iSubSpaceId!=68)//66 68
-	{
-		return false;
-	}
+	//if (iSubSpaceId!=68)//66 68
+	//{
+	//	return false;
+	//}
 
 	DBWindowWrite("build submesh in %d subspace...........................\n",iSubSpaceId);
 
@@ -249,7 +249,7 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 		bool bPert=GetOutBound(iSubSpaceId,currentFaceInfo,iFaceId,vecSSFaceTri,vecShrinkSSFaceTri,currentPwh3,HeightVec,OutBnd,ExtruCenter);
 
 		//test
-		return;
+		//return;
 		//if (OutBnd.outer_boundary.empty())
 		//{
 		//	return;
@@ -294,10 +294,10 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 							 Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter)
 {
 	//test
-	if (iFaceId!=294)//284 258 278
-	{
-		return false;
-	}
+	//if (iFaceId!=264)//284 258 278
+	//{
+	//	return false;
+	//}
 
 	float NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=2.1;//1.4;//1.2;//1;//0.5
 
@@ -322,9 +322,6 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 					{
 						//also consider if the original Pwh intersects this face
 						//if not,proper cylinder can be obtained by shrinking the height first
-
-
-
 
 
 						//also consider the dihedral angle between two planes
@@ -357,8 +354,8 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 			Polygon_with_holes_3 ExtrudePwh=Pwh3DIn;
 
 			//test
-			this->vecTestPoint=Pwh3DIn.outer_boundary;
-			this->vecTestPoint.push_back(TransCenter);
+			//this->vecTestPoint=Pwh3DIn.outer_boundary;
+			//this->vecTestPoint.push_back(TransCenter);
 
 			//set the flags for all points
 			for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
@@ -390,6 +387,12 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 				//non-neighbor facets of iFaceId,if yes, shrink the length,until all these segments intersect
 				//only with the neighbor faces
 				bool bIntSctNonNb=false;
+				//vector(with max distance to intersected edge line) from the outside point to the intersected face
+				vector<Vector_3> vecMaxToFaceVect;
+				for (unsigned int i=0;i<setNbFaceId.size();i++)
+				{
+					vecMaxToFaceVect.push_back(CGAL::NULL_VECTOR);
+				}
 				for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
 				{
 					//only judge the point outside the subspace
@@ -399,8 +402,8 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 					}
 					else
 					{
-						//get the intersection point between the segment connecting the extruded point and center
-						//& the subspace
+						//get the intersection point between the segment connecting the extruded point and center & the subspace
+						//get the vectors with max distances from the outside points to each intersected neighbor face
 						Segment_3 ConnectSeg(ExtrudePwh.outer_boundary.at(i),TransCenter);
 						for (Facet_iterator FaceIter=this->vecSSMesh.at(iSubSpaceId).facets_begin();FaceIter!=this->vecSSMesh.at(iSubSpaceId).facets_end();FaceIter++)
 						{
@@ -416,11 +419,29 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 								set<int>::iterator pFind=setNbFaceId.find(FaceIter->GetReserved());
 								if (pFind==setNbFaceId.end())
 								{
-									//test
-									this->vecTestTri.push_back(currTri);
-
 									bIntSctNonNb=true;
 									break;
+								}
+								else
+								{
+									//plane that the extruded boundary points lie on
+									Plane_3 ExtrudedFacePlane(TransCenter,HeightVec*(double)iLengh/(double)iLenStep);
+									//compute the intersection lines between the plane of the extruded points and the neighbor faces
+									CGAL::Object result = CGAL::intersection(ExtrudedFacePlane,currTri);
+									Segment_3 SegResult;
+									//Point_3 TempPnt;Triangle_3 TempTri;
+									assert(CGAL::assign(SegResult, result));
+									Line_3 IntSctLine=SegResult.supporting_line();
+									Point_3 ProjPoint=IntSctLine.projection(ExtrudePwh.outer_boundary.at(i));
+									double dDist=sqrt(CGAL::squared_distance(ExtrudePwh.outer_boundary.at(i),ProjPoint));
+									int iNbFaceIndex=distance(setNbFaceId.begin(),pFind);
+									double dSavedVectLen=sqrt(vecMaxToFaceVect.at(iNbFaceIndex).squared_length());
+									if (dDist>dSavedVectLen)
+									{
+										Vector_3 TempVect(ExtrudePwh.outer_boundary.at(i),ProjPoint);
+										TempVect=TempVect/sqrt(TempVect.squared_length());
+										vecMaxToFaceVect.at(iNbFaceIndex)=TempVect*dDist;
+									}
 								}
 							}
 						}
@@ -434,16 +455,54 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 				{
 					continue;
 				}
-				else//move each boundary point towards the extruded center, to make them totally inside the subspace
+				else
 				{
+					//iteratively move each boundary point along the composite vector, 
+					//if the num of points outside the ss increases,then break & put all outside points inwards by scaling
+					Vector_3 CompVect=CGAL::NULL_VECTOR;
+					for (unsigned int i=0;i<vecMaxToFaceVect.size();i++)
+					{
+						CompVect=CompVect+vecMaxToFaceVect.at(i);
+					}
+					int iLastOutPoinNum=ExtrudePwh.outer_boundary.size();
+					vector<Point_3> vecLastPointPos=ExtrudePwh.outer_boundary;
+					vector<int> vecLastInOutflag=ExtrudePwh.outer_bound_flag;
+					const int iMoveStep=5;
+					for (int iMove=0;iMove<=iMoveStep;iMove++)
+					{
+						int iCurrOutPointNum=0;
+						for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
+						{
+							ExtrudePwh.outer_boundary.at(i)=ExtrudePwh.outer_boundary.at(i)+CompVect*(double)iMove/(double)iMoveStep;
+							if (JudgePointInsideSS(ExtrudePwh.outer_boundary.at(i),vecShrinkSSFaceTri))
+							{
+								ExtrudePwh.outer_bound_flag.at(i)=CGAL::ON_BOUNDED_SIDE;
+							}
+							else
+							{
+								ExtrudePwh.outer_bound_flag.at(i)=CGAL::ON_UNBOUNDED_SIDE;
+								iCurrOutPointNum++;
+							}
+						}
+						if (iCurrOutPointNum>iLastOutPoinNum)
+						{
+							ExtrudePwh.outer_boundary=vecLastPointPos;
+							ExtrudePwh.outer_bound_flag=vecLastInOutflag;
+							break;
+						}
+						else
+						{
+							iLastOutPoinNum=iCurrOutPointNum;
+							vecLastPointPos=ExtrudePwh.outer_boundary;
+							vecLastInOutflag=ExtrudePwh.outer_bound_flag;
+						}
+					}
+					
 					for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
 					{
 						//if the boundary point is already inside,keep fixed
 						if (ExtrudePwh.outer_bound_flag.at(i)==CGAL::ON_BOUNDED_SIDE)
 						{
-							//test
-							this->vecTestPoint.push_back(ExtrudePwh.outer_boundary.at(i));
-
 							continue;
 						}
 						//else, move towards the extruded center
@@ -454,11 +513,6 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 							for (int iScale=0;iScale<iScaleStep;iScale++)
 							{
 								Point_3 ScalePoint=ExtrudePwh.outer_boundary.at(i)+VectPointToCsCenter*(float)iScale/(float)iScaleStep;
-
-								//test
-								this->vecTestPoint.push_back(ScalePoint);
-
-
 								if (JudgePointInsideSS(ScalePoint,vecShrinkSSFaceTri))
 								{
 									ExtrudePwh.outer_boundary.at(i)=ScalePoint;
@@ -469,9 +523,11 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 						}
 					}
 					//test
-					//assert(CheckCylinderInsideSS(vecSSFaceTri,vecShrinkSSFaceTri,ExtrudePwh));
+					assert(CheckCylinderInsideSS(vecSSFaceTri,vecShrinkSSFaceTri,ExtrudePwh));
 				}
 			}
+
+			//this->vecTestPoint.insert(this->vecTestPoint.end(),ExtrudePwh.outer_boundary.begin(),ExtrudePwh.outer_boundary.end());
 
 			//translate the holes towards the center if they lie outside the subspace
 			//if not succeed, rescale the radius & shrink the length
