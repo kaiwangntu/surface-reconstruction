@@ -1,0 +1,2952 @@
+
+bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri, 
+							 Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter)
+{
+	//test
+	if (iFaceId!=278)//284
+	{
+		return false;
+	}
+
+	float NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=2.1;//1.4;//1.2;//1;//0.5
+
+	//get the center of the CS
+	Point_3 CSCenter=CGAL::centroid(Pwh3DIn.outer_boundary.begin(),Pwh3DIn.outer_boundary.end());
+	const int iLenStep=10;//10;
+	const int iScaleStep=10;//10;//5;
+
+	if (Pwh3DIn.bIntersectSSFace)
+	{
+		DBWindowWrite("Pwh intersects face...\n");
+		//collect the facets on neighbor faces first
+		set<Facet_handle> setNbFacet;
+		for (Facet_iterator FaceIter=this->vecSSMesh.at(iSubSpaceId).facets_begin();FaceIter!=this->vecSSMesh.at(iSubSpaceId).facets_end();FaceIter++)
+		{
+			if (FaceIter->GetReserved()==iFaceId)
+			{
+				Halfedge_around_facet_circulator Hafc=FaceIter->facet_begin();
+				do 
+				{
+					if (Hafc->opposite()->facet()->GetReserved()!=iFaceId)
+					{
+						setNbFacet.insert(Hafc->opposite()->facet());
+					}
+					Hafc++;
+				} while(Hafc!=FaceIter->facet_begin());
+			}
+		}
+		//shrink the length of the cylinder
+		for (int iLengh=iLenStep;iLengh>0;iLengh--)
+		{
+			//if the center of the extruded pwh is outside the ss,then shrink the length without scaling
+			HeightVec=HeightVec/sqrt(HeightVec.squared_length());
+			HeightVec=HeightVec*200;//150;//600;//900;//1000;
+			Point_3 TransCenter=CSCenter+HeightVec*(double)iLengh/(double)iLenStep;
+			if (!JudgePointInsideSSStrict(TransCenter,vecShrinkSSFaceTri))
+			{
+				continue;
+			}
+			//test
+			this->vecTestPoint.push_back(TransCenter);
+
+
+			//compute the translated&scaled extruded Pwh 
+			Polygon_with_holes_3 ExtrudePwh=Pwh3DIn;
+			//set the flags for all points
+			for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
+			{
+				ExtrudePwh.outer_bound_flag.push_back(CGAL::ON_UNBOUNDED_SIDE);
+			}
+			for (unsigned int i=0;i<ExtrudePwh.inner_hole.size();i++)
+			{
+				vector<int> vecCurrFlag;
+				for (unsigned int j=0;j<ExtrudePwh.inner_hole.at(i).size();j++)
+				{
+					vecCurrFlag.push_back(CGAL::ON_UNBOUNDED_SIDE);
+				}
+				ExtrudePwh.inner_hole_flag.push_back(vecCurrFlag);
+			}
+			for (unsigned int i=0;i<Pwh3DIn.outer_boundary.size();i++)
+			{
+				Point_3 TransPoint=Pwh3DIn.outer_boundary.at(i)+HeightVec*(double)iLengh/(double)iLenStep;
+				
+				//test
+				this->vecTestPoint.push_back(TransPoint);
+
+
+				//only adjust the point outside the subspace
+				if (JudgePointInsideSS(TransPoint,vecShrinkSSFaceTri))
+				{
+					ExtrudePwh.outer_boundary.at(i)=TransPoint;
+				}
+				else
+				{
+					//get the intersection point between the segment connecting the extruded point and center
+					//& the subspace
+					Segment_3 ConnectSeg(TransPoint,TransCenter);
+					Point_3 IntSctPoint(99999,99998,99997);
+					Segment_3 TempSeg;
+					//if the intersected triangle belongs to the neighbor face of iFaceId,move towards the extruded center;
+					//otherwise, move towards the original cs point(shrink the length)
+					bool bNbFace=false;
+					for (Facet_iterator FaceIter=this->vecSSMesh.at(iSubSpaceId).facets_begin();FaceIter!=this->vecSSMesh.at(iSubSpaceId).facets_end();FaceIter++)
+					{
+						Triangle_3 currTri(FaceIter->halfedge()->vertex()->GetLRNewPos(),FaceIter->halfedge()->next()->vertex()->GetLRNewPos(),
+							FaceIter->halfedge()->next()->next()->vertex()->GetLRNewPos());
+						int iResult=GeometryAlgorithm::CGAL_intersection(ConnectSeg,currTri,IntSctPoint,TempSeg);
+						if (iResult==1)
+						{
+							//judge if the triangle belongs to the neighbor face 
+							set<Facet_handle>::iterator pFind=setNbFacet.find(FaceIter);
+							if (pFind!=setNbFacet.end())
+							{
+								bNbFace=true;
+							}
+							else//if not, get the intersection point between the extruded vector and ss
+							{
+								//extend the segment a little bit to avoid numerical issue
+								Vector_3 ExtruVec(TransPoint,Pwh3DIn.outer_boundary.at(i));
+								ExtruVec=ExtruVec/sqrt(ExtruVec.squared_length());
+								Segment_3 ExtruSeg(TransPoint,Pwh3DIn.outer_boundary.at(i)+ExtruVec*5);
+								int iResult2=-1;
+								for (Facet_iterator FaceIter2=this->vecSSMesh.at(iSubSpaceId).facets_begin();FaceIter2!=this->vecSSMesh.at(iSubSpaceId).facets_end();FaceIter2++)
+								{
+									if (FaceIter2->GetReserved()==iFaceId)
+									{
+										continue;
+									}
+									set<Facet_handle>::iterator pFind2=setNbFacet.find(FaceIter2);
+									if (pFind2!=setNbFacet.end())
+									{
+										continue;
+									}
+									Triangle_3 currTri2(FaceIter2->halfedge()->vertex()->GetLRNewPos(),FaceIter2->halfedge()->next()->vertex()->GetLRNewPos(),
+										FaceIter2->halfedge()->next()->next()->vertex()->GetLRNewPos());
+									iResult2=GeometryAlgorithm::CGAL_intersection(ExtruSeg,currTri2,IntSctPoint,TempSeg);
+									if (iResult2==1)
+									{
+										break;
+									}
+								}
+								assert(iResult2!=-1);
+							}
+							break;
+						}
+					}
+					assert(IntSctPoint!=Point_3(99999,99998,99997));
+					double dDisturbDist=5;
+					if (bNbFace)//translate the point towards the center
+					{
+						Vector_3 PointToCsCenterVect=CSCenter-Pwh3DIn.outer_boundary.at(i);
+						PointToCsCenterVect=PointToCsCenterVect/sqrt(PointToCsCenterVect.squared_length());
+						IntSctPoint=IntSctPoint;PointToCsCenterVect*dDisturbDist;
+					}
+					else//translate the point towards the original point on cs
+					{
+						Vector_3 VectorToShrink=Pwh3DIn.outer_boundary.at(i)-IntSctPoint;
+						VectorToShrink=VectorToShrink/sqrt(VectorToShrink.squared_length());
+						IntSctPoint=IntSctPoint+VectorToShrink*dDisturbDist;
+					}
+					ExtrudePwh.outer_boundary.at(i)=IntSctPoint;
+				}
+			}
+			//translate the holes towards the center if they lie outside the subspace
+			//if not succeed, rescale the radius & shrink the length
+			bool bInnerHoleDone=true;
+			for (int iScale=0;iScale<iScaleStep;iScale++)
+			{
+				for (unsigned int i=0;i<Pwh3DIn.inner_hole.size();i++)
+				{
+					bInnerHoleDone=false;
+					//move each inner hole towards the center of the cs
+					Point_3 InnerHoleCenter=CGAL::centroid(Pwh3DIn.inner_hole.at(i).begin(),Pwh3DIn.inner_hole.at(i).end());
+					Vector_3 HoleCenterToCSCenter=CSCenter-InnerHoleCenter;
+					for (unsigned int j=0;j<Pwh3DIn.inner_hole.at(i).size();j++)
+					{
+						//scale
+						//Vector_3 PointToCsCenterVect=CSCenter-Pwh3DIn.inner_hole.at(i).at(j);
+						//Point_3 ScalePoint=Pwh3DIn.inner_hole.at(i).at(j)+PointToCsCenterVect*iScale/(float)iScaleStep;
+						Point_3 ScalePoint=Pwh3DIn.inner_hole.at(i).at(j)+HoleCenterToCSCenter*iScale/(float)iScaleStep;
+						//translate
+						Point_3 TransPoint=ScalePoint;//+CstoSSCenterVect*(double)iCenter/(double)iMoveStep;
+						//extrude
+						HeightVec=HeightVec/sqrt(HeightVec.squared_length());
+						HeightVec=HeightVec*200;//150;//600;//900;//1000;
+						TransPoint=TransPoint+HeightVec*(double)iLengh/(double)iLenStep;//*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO;
+						ExtrudePwh.inner_hole.at(i).at(j)=TransPoint;
+					}
+				}
+				//check intersection
+				bool bInside=CheckCylinderInsideSS(vecSSFaceTri,vecShrinkSSFaceTri,ExtrudePwh);
+				if (bInside)
+				{
+					bInnerHoleDone=true;
+					break;
+				}
+			}
+			if (bInnerHoleDone==true)
+			{
+				Pwh3DOut=ExtrudePwh;
+				break;
+			}
+		}
+	}
+	else
+	{
+		DBWindowWrite("Pwh does NOT intersects face...\n");
+		//shrink the length of the cylinder
+		for (int iLengh=iLenStep;iLengh>0;iLengh--)
+		{
+			//if the center of the extruded pwh is outside the ss,then shrink the length without scaling
+			Point_3 TransCenter=CSCenter+HeightVec*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO*(double)iLengh/(double)iLenStep;
+			if (!JudgePointInsideSS(TransCenter,vecShrinkSSFaceTri))
+			{
+				continue;
+			}
+			//compute the translated&scaled extruded Pwh 
+			Polygon_with_holes_3 ExtrudePwh=Pwh3DIn;
+			//set the flags for all points
+			for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
+			{
+				ExtrudePwh.outer_bound_flag.push_back(CGAL::ON_UNBOUNDED_SIDE);
+			}
+			for (unsigned int i=0;i<ExtrudePwh.inner_hole.size();i++)
+			{
+				vector<int> vecCurrFlag;
+				for (unsigned int j=0;j<ExtrudePwh.inner_hole.at(i).size();j++)
+				{
+					vecCurrFlag.push_back(CGAL::ON_UNBOUNDED_SIDE);
+				}
+				ExtrudePwh.inner_hole_flag.push_back(vecCurrFlag);
+			}
+
+			//rescale the radius until all vertices are inside the subspace
+			for (int iScale=0;iScale<iScaleStep;iScale++)
+			{
+				for (unsigned int i=0;i<Pwh3DIn.outer_boundary.size();i++)
+				{
+					//scale
+					Vector_3 PointToCsCenterVect=CSCenter-Pwh3DIn.outer_boundary.at(i);
+					Point_3 ScalePoint=Pwh3DIn.outer_boundary.at(i)+PointToCsCenterVect*(float)iScale/(float)iScaleStep;
+					//test see
+					//DBWindowWrite("length of vector to shrink: %f\n",sqrt(PointToCsCenterVect.squared_length())*(float)iScale/(float)iScaleStep);
+					//translate
+					Point_3 TransPoint=ScalePoint;//+CstoSSCenterVect*(double)iCenter/(double)iMoveStep;
+					TransPoint=TransPoint+HeightVec*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO*(double)iLengh/(double)iLenStep;//NON_INTSC_POLY_EXTRU_HEIGHT_RATIO;
+					ExtrudePwh.outer_boundary.at(i)=TransPoint;
+				}
+				for (unsigned int i=0;i<Pwh3DIn.inner_hole.size();i++)
+				{
+					//move each inner hole towards the center of the cs
+					Point_3 InnerHoleCenter=CGAL::centroid(Pwh3DIn.inner_hole.at(i).begin(),Pwh3DIn.inner_hole.at(i).end());
+					Vector_3 HoleCenterToCSCenter=CSCenter-InnerHoleCenter;
+					for (unsigned int j=0;j<Pwh3DIn.inner_hole.at(i).size();j++)
+					{
+						//scale
+						//Vector_3 PointToCsCenterVect=CSCenter-Pwh3DIn.inner_hole.at(i).at(j);
+						//Point_3 ScalePoint=Pwh3DIn.inner_hole.at(i).at(j)+PointToCsCenterVect*iScale/(float)iScaleStep;
+						Point_3 ScalePoint=Pwh3DIn.inner_hole.at(i).at(j)+HoleCenterToCSCenter*iScale/(float)iScaleStep;
+						//translate
+						Point_3 TransPoint=ScalePoint;//+CstoSSCenterVect*(double)iCenter/(double)iMoveStep;
+						//extrude
+						TransPoint=TransPoint+HeightVec*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO*(double)iLengh/(double)iLenStep;//*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO;
+						ExtrudePwh.inner_hole.at(i).at(j)=TransPoint;
+					}
+				}
+				//check intersection
+				bool bInside=CheckCylinderInsideSS(vecSSFaceTri,vecShrinkSSFaceTri,ExtrudePwh);
+				//test
+				//if (iScale==1)
+				//{
+				//	this->vecTestPoint.insert(this->vecTestPoint.end(),ExtrudePwh.outer_boundary.begin(),ExtrudePwh.outer_boundary.end());
+				//	this->vecTestPoint.push_back(CSCenter);
+				//	break;
+				//}
+				if (bInside)
+				{
+					Pwh3DOut=ExtrudePwh;
+					break;
+				}
+			}
+			if (!Pwh3DOut.outer_boundary.empty())
+			{
+				break;
+			}
+		}
+	}
+
+	assert(!Pwh3DOut.outer_boundary.empty());
+
+	if (!Pwh3DOut.outer_boundary.empty())
+	{
+		ExtruCenter=CGAL::centroid(Pwh3DOut.outer_boundary.begin(),Pwh3DOut.outer_boundary.end());
+	}
+
+	//test
+	this->vecTestPoint.insert(this->vecTestPoint.end(),Pwh3DIn.outer_boundary.begin(),Pwh3DIn.outer_boundary.end());
+	//this->vecTestPoint.push_back(CSCenter);
+	for (unsigned int i=0;i<Pwh3DOut.outer_boundary.size();i++)
+	{
+		this->vecTestPoint.push_back(Pwh3DOut.outer_boundary.at(i));
+	}
+
+	if (Pwh3DIn.bIntersectSSFace)
+	{
+		return true;
+	}
+	return false;
+}
+
+
+			//if intersects with face,also move some neighbor points with the same vector,to avoid self intersection of cylinder
+			if (Pwh3DIn.bIntersectSSFace)
+			{
+				for (map<int,Vector_3>::iterator MapIter=NbPointMoveInfo.begin();MapIter!=NbPointMoveInfo.end();MapIter++)
+				{
+					ExtrudePwh.outer_boundary.at(MapIter->first)=ExtrudePwh.outer_boundary.at(MapIter->first)+MapIter->second;
+				}
+			}
+
+
+			//key: index of neighbor point to move
+			//value: vector to move accordingly
+			map<int,Vector_3> NbPointMoveInfo;
+
+				if (Pwh3DIn.bIntersectSSFace)
+				{
+					int iNbRange=2;
+					for (int iNb=-2;iNb<=2;iNb++)
+					{
+						if (iNb==0)
+						{
+							continue;
+						}
+						map<int,Vector_3>::iterator pFind=NbPointMoveInfo.find((i+ExtrudePwh.outer_boundary.size()+iNb)%ExtrudePwh.outer_boundary.size());
+						if (pFind!=NbPointMoveInfo.end())
+						{
+							pFind->second=pFind->second+PointToCsCenterVect*(float)iScale/(float)iScaleStep*0.8;
+						}
+						else
+						{
+							NbPointMoveInfo.insert(make_pair((i+ExtrudePwh.outer_boundary.size()+iNb)%ExtrudePwh.outer_boundary.size(),
+								PointToCsCenterVect*(float)iScale/(float)iScaleStep*0.8));
+						}
+					}
+				}
+
+
+void KW_CS2Surf::GetSSToCombine(int iCurrSSID,int iValidFaceID,int& iAdjFaceID,int& iNbSpaceID)
+{
+	//get the face that has the largest projection of the valid face in this subspace
+	//and regard the other adjacent subspace of this face as the subspace to combine
+	int iValidFacePlaneID=this->vecResortFace.at(iValidFaceID).iFacePlaneID;
+	////projection area of the valid face onto the adjacent face
+	//double dMaxProjArea=0;
+	//angle between the normals of the plane(0~180)
+	double dMaxAngle=0;
+	Vector_3 ValidFaceNorm;
+	if (this->vecResortFace.at(iValidFaceID).vecSubspaceId.front()==i)
+	{
+		ValidFaceNorm=this->vecResortFace.at(iValidFaceID).vecHeightVect.front();
+	}
+	else
+	{
+		ValidFaceNorm=this->vecResortFace.at(iValidFaceID).vecHeightVect.back();
+	}
+
+	for (int j=0;j<this->vecSSspacefacenum.at(i);j++)
+	{
+		int iOppFaceID=this->vecvecSSspace.at(i).at(j);
+		if (iOppFaceID==iValidFaceID)//the face itself,skip
+		{
+			continue;
+		}
+		if (this->vecResortFace.at(iOppFaceID).bBoundaryFace)//if the face to judge is a boundary face,skip
+		{
+			continue;
+		}
+		//get the normal of the opp face
+		Vector_3 OppFaceNorm;
+		if (this->vecResortFace.at(iOppFaceID).vecSubspaceId.front()==i)
+		{
+			OppFaceNorm=this->vecResortFace.at(iOppFaceID).vecHeightVect.front();
+		}
+		else
+		{
+			OppFaceNorm=this->vecResortFace.at(iOppFaceID).vecHeightVect.back();
+		}
+		//judge the angle between the two normals
+		double dCurrAngle=GeometryAlgorithm::GetAngleBetweenTwoVectors3d(ValidFaceNorm,OppFaceNorm);
+		if (dCurrAngle>dMaxAngle)
+		{
+			dMaxAngle=dCurrAngle;
+			iAdjFaceID=iOppFaceID;
+			//get the neighbor subspace id
+			if (this->vecResortFace.at(iAdjFaceID).vecSubspaceId.front()==i)//the subspace itself
+			{
+				iNbSpaceID=this->vecResortFace.at(iAdjFaceID).vecSubspaceId.back();
+			}
+			else
+			{
+				iNbSpaceID=this->vecResortFace.at(iAdjFaceID).vecSubspaceId.front();
+			}
+		}
+
+		//int iOppFacePlaneID=this->vecResortFace.at(iOppFaceID).iFacePlaneID;
+		////project the valid face onto the current plane
+		//Plane_3 currFacePlane=this->vecTempCN.at(iOppFacePlaneID).plane;
+		//vector<Point_3> vecFaceProj;
+		//for (unsigned int k=0;k<this->vecResortFace.at(iValidFaceID).vecFaceVertex.size();k++)
+		//{
+		//	vecFaceProj.push_back(currFacePlane.projection(this->vecResortFace.at(iValidFaceID).vecFaceVertex.at(k)));
+		//}
+		////get the area of projection
+		//Polygon_2 ValidPoly2d,OppPoly2d;
+		//if (!GeometryAlgorithm::PlanarPolygonToXOYCCW(vecFaceProj,ValidPoly2d,currFacePlane))
+		//{
+		//	continue;
+		//}
+		//GeometryAlgorithm::PlanarPolygonToXOYCCW(this->vecResortFace.at(iOppFaceID).vecFaceVertex,OppPoly2d,currFacePlane);
+		//Pwh_list_2 ResultPwh2d;
+		//GeometryAlgorithm::CGAL_intersection(ValidPoly2d,OppPoly2d,ResultPwh2d);
+		//double dCurrArea=0;
+		//for (Pwh_list_2::iterator PwhIter=ResultPwh2d.begin();PwhIter!=ResultPwh2d.end();PwhIter++)
+		//{
+		//	dCurrArea=dCurrArea+PwhIter->outer_boundary().area();
+		//}
+		//if (dCurrArea>dMaxProjArea)
+		//{
+		//	dMaxProjArea=dCurrArea;
+		//	iAdjFaceID=iOppFaceID;
+		//	//get the neighbor subspace id
+		//	if (this->vecResortFace.at(iAdjFaceID).vecSubspaceId.front()==i)//the subspace itself
+		//	{
+		//		iNbSpaceID=this->vecResortFace.at(iAdjFaceID).vecSubspaceId.back();
+		//	}
+		//	else
+		//	{
+		//		iNbSpaceID=this->vecResortFace.at(iAdjFaceID).vecSubspaceId.front();
+		//	}
+		//}
+	}
+}
+
+void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,PolyhedronFromPOF& InOutPFPOF,vector<int>& IntersectPwh,vector<Point_3>& vecFacePoint)
+{
+	ResortedFace currentFaceInfo=this->vecResortFace.at(iFaceId);
+	//decide the height vector pointing to the inside of the subspace
+	Vector_3 HeightVec=CGAL::NULL_VECTOR;
+	if (iSubSpaceId==currentFaceInfo.vecSubspaceId.front())
+	{
+		HeightVec=currentFaceInfo.vecHeightVect.front();
+	}
+	else if (iSubSpaceId==currentFaceInfo.vecSubspaceId.back())
+	{
+		HeightVec=currentFaceInfo.vecHeightVect.back();
+	}
+	//collect the polyhedrons
+	//quite time-consuming when terminating the program
+	for (unsigned int i=0;i<this->vecPOF.at(iFaceId).vecPwhList3D.size();i++)
+	{
+		Pwh_list_3 currentPwhList3=this->vecPOF.at(iFaceId).vecPwhList3D.at(i);
+		Pwh_list_2 currentPwhList2=this->vecPOF.at(iFaceId).vecPwhList2D.at(i);
+		//the cs does not intersect with the face squre
+		//or the cs is inner of hole, don't compute the polyhedron
+		if (currentPwhList3.empty())
+		{
+			continue;
+		}
+		Pwh_list_2::iterator PwhList2Iter=currentPwhList2.begin();
+		for (Pwh_list_3::iterator PwhList3Iter=currentPwhList3.begin();PwhList3Iter!=currentPwhList3.end();PwhList3Iter++,PwhList2Iter++)
+		{
+			Polygon_with_holes_3 currentPwh3=*PwhList3Iter;
+			Polygon_with_holes_2 currentPwh2=*PwhList2Iter;
+			//////////////////////////////////////////////////////////////////
+			//lower the precision&record these points
+			//test
+			//FILE* pFile=fopen("bound.txt","w");
+			for (unsigned int j=0;j<currentPwh3.outer_boundary.size();j++)
+			{
+				//float fX=currentPwh3.outer_boundary.at(j).x();
+				//float fY=currentPwh3.outer_boundary.at(j).y();
+				//float fZ=currentPwh3.outer_boundary.at(j).z();
+				//currentPwh3.outer_boundary.at(j)=Point_3(fX,fY,fZ);
+				vecFacePoint.push_back(currentPwh3.outer_boundary.at(j));
+				//fprintf(pFile,"%f %f %f\n",currentPwh3.outer_boundary.at(j).x(),currentPwh3.outer_boundary.at(j).y(),
+				//	currentPwh3.outer_boundary.at(j).z());
+			}
+			//fclose(pFile);
+			for (unsigned int j=0;j<currentPwh3.inner_hole.size();j++)
+			{
+				for (unsigned int k=0;k<currentPwh3.inner_hole.at(j).size();k++)
+				{
+					//float fX=currentPwh3.inner_hole.at(j).at(k).x();
+					//float fY=currentPwh3.inner_hole.at(j).at(k).y();
+					//float fZ=currentPwh3.inner_hole.at(j).at(k).z();
+					//currentPwh3.inner_hole.at(j).at(k)=Point_3(fX,fY,fZ);
+					vecFacePoint.push_back(currentPwh3.inner_hole.at(j).at(k));
+				}
+			}
+			
+			//////////////////////////////////////////////////////////////////
+			//perturb the outer boundary of the extruded part
+			//vector<Point_3> PertOutBnd;
+			//bool bPert=PerturbOneOutBound(currentFaceInfo,currentPwh3,HeightVec,PertOutBnd,iSubSpaceId);
+			//PerturbOneOutBound(currentFaceInfo,currentPwh3,HeightVec,PertOutBnd,iSubSpaceId);
+			Polygon_with_holes_3 OutBnd;
+			bool bPert=GetOutBound(currentFaceInfo,iFaceId,currentPwh3,HeightVec,OutBnd,iSubSpaceId);
+
+			//test
+			//continue;
+
+			//record the indices of polygons who intersect with the bounding face
+			if (bPert)
+			{
+				IntersectPwh.push_back(InOutPFPOF.vecPwhCylinder.size());
+			}
+
+			KW_Mesh OutPolyh;
+			GetOnePolyhFromPwh3(currentPwh3,currentPwh2,OutBnd,HeightVec,OutPolyh);
+
+
+			//record in InOutPFPOF
+			InOutPFPOF.vecPwh3D.push_back(currentPwh3);
+			//InOutPFPOF.vecPwh2D.push_back(currentPwh2);
+			InOutPFPOF.vecPwhCylinder.push_back(OutPolyh);
+
+			//test
+			OBJHandle::UnitizeCGALPolyhedron(OutPolyh,false,false);
+			this->vecSinglePoly.push_back(OutPolyh);
+		}
+	}
+}
+
+
+bool KW_CS2Surf::IntersectCnFace(vector<Point_3>& InputFace,CurveNetwork InputCN,PolygonOnFace& InOutPOF)
+{
+	//ensure the square is ccw
+	Polygon_2 Face2D;
+	//GeometryAlgorithm::PlanarPolygonToXOYCCW(InputFace,Face2D,InputCN.ProfilePlaneType);
+	GeometryAlgorithm::PlanarPolygonToXOYCCW(InputFace,Face2D,InputCN.plane);
+	//intersect each CS with the square
+	if (!IntersectCSFace(Face2D,InputCN,InOutPOF))
+	{
+		return false;
+	}
+	//subtract the inner of a hole from the outer of a hole/circle
+	SubtractInnerHole(InputCN,InOutPOF);
+	//convert 2D polygon back to 3D
+	Polygon2Dto3D(InputCN,InOutPOF);
+	return true;
+}
+
+bool KW_CS2Surf::IntersectCSFace(Polygon_2 Face2D,CurveNetwork InputCN,PolygonOnFace& InOutPOF)
+{
+	for (unsigned int i=0;i<InputCN.Profile2D.size();i++)
+	{
+		if (InputCN.CurveInOut.at(i)!=-1)//inner of a hole
+		{
+			//change cw to ccw to compute intersection
+			InputCN.Profile2D.at(i).reverse_orientation();
+		}
+		Pwh_list_2 IntersectResult;
+		//compute the intersection of the CS and the square
+		//convert to float to avoid numerical problem(a bug in CGAL)
+		//GeometryAlgorithm::DbToFlForCGALBool(Face2D);
+		//GeometryAlgorithm::DbToFlForCGALBool(InputCN.Profile2D.at(i));
+		//CGAL::intersection(Face2D, InputCN.Profile2D.at(i), std::back_inserter(IntersectResult));
+
+		//test
+		//GeometryAlgorithm::PrintCGALPolygon_2toFile("0.txt",Face2D);
+		//GeometryAlgorithm::PrintCGALPolygon_2toFile("1.txt",InputCN.Profile2D.at(i));
+
+		GeometryAlgorithm::CGAL_intersection(Face2D, InputCN.Profile2D.at(i), IntersectResult);
+		
+		AlignIntersectData2D(Face2D,InputCN.Profile2D.at(i), IntersectResult);
+
+		//test
+		//GeometryAlgorithm::PrintCGALPolygon_2toFile("2.txt",IntersectResult.front().outer_boundary());
+
+		//save no matter intersected or not
+		InOutPOF.vecPwhList2D.push_back(IntersectResult);
+		//insert a null Pwh_list_3 to make one-one mapping between 2D and 3D info
+		//and to create space for further use
+		Pwh_list_3 NullPwhList3;
+		InOutPOF.vecPwhList3D.push_back(NullPwhList3);
+	}
+	assert(InOutPOF.vecPwhList2D.size()==InputCN.Profile2D.size());
+
+	for (unsigned int i=0;i<InOutPOF.vecPwhList2D.size();i++)
+	{
+		if (!InOutPOF.vecPwhList2D.at(i).empty())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void KW_CS2Surf::AlignIntersectData2D(Polygon_2 Face2D,Polygon_2 Profile2D,Pwh_list_2& IntersectResult)
+{
+	//remove duplicated points first
+	GeometryAlgorithm::RemoveCGALInterDupPoints(IntersectResult);
+}
+
+void KW_CS2Surf::SubtractInnerHole(CurveNetwork InputCN,PolygonOnFace& InOutPOF)
+{
+	//subtract the inner of a hole from the outer of a hole/circle
+	for (unsigned int i=0;i<InOutPOF.vecPwhList2D.size();i++)
+	{
+		//the polygon does not intersect with the face squre
+		//or the cs is inner of hole, don't record the assist edge
+		if (InOutPOF.vecPwhList2D.at(i).empty()||InputCN.CurveInOut.at(i)!=-1)
+		{
+			//have already put an NullPwhList3 in IntersectCSFace function,so do nothing here
+		}
+		else//outer of a hole/circle
+		{
+			set<int> setInnerCSId;
+			Pwh_list_2 NewResult;
+			//for each outter polygon_with_holes
+			for (Pwh_list_2::const_iterator  Pwh_Outer_Iter= InOutPOF.vecPwhList2D.at(i).begin();Pwh_Outer_Iter!= InOutPOF.vecPwhList2D.at(i).end(); Pwh_Outer_Iter++) 
+			{
+				Pwh_list_2 SubResult;
+				SubResult.push_back(*Pwh_Outer_Iter);
+				//check all the inner holes
+				for (unsigned int j=i+1;j<InputCN.CurveInOut.size();j++)
+				{
+					if (InputCN.CurveInOut.at(j)==i)//this hole is inside the outer of hole/circle,subtract!
+					{
+						Pwh_list_2 CurrentInnerPwh=InOutPOF.vecPwhList2D.at(j);
+						//for (Pwh_list_2::const_iterator  Pwh_Inner_Iter= CurrentInnerPwh.begin();Pwh_Inner_Iter!= CurrentInnerPwh.end(); Pwh_Inner_Iter++)
+						for (Pwh_list_2::iterator  Pwh_Inner_Iter= CurrentInnerPwh.begin();Pwh_Inner_Iter!= CurrentInnerPwh.end(); Pwh_Inner_Iter++)
+						{
+							//subtract from the subtracted result,instead of the original outer Pwh
+							for (Pwh_list_2::iterator SubIter=SubResult.begin();SubIter!=SubResult.end();SubIter++)
+							{
+								//GeometryAlgorithm::DbToFlForCGALBool(*SubIter);
+								//GeometryAlgorithm::DbToFlForCGALBool(*Pwh_Inner_Iter);
+								//too precise may cause error,so use inexact calculation here
+								//bool bOneIntersect=CGAL::do_intersect(*SubIter,*Pwh_Inner_Iter);
+								bool bOneIntersect=GeometryAlgorithm::CGAL_do_intersect(*SubIter,*Pwh_Inner_Iter);
+								//test
+								//Point_2 testpoint0=*((*SubIter).outer_boundary().vertices_begin());
+								//Point_2 testpoint1=*((*Pwh_Inner_Iter).outer_boundary().vertices_begin());
+								//bool btestEqual=(testpoint0==testpoint1);
+								//GeometryAlgorithm::PrintCGALPolygon_2toFile("1.txt",(*SubIter).outer_boundary());
+								//GeometryAlgorithm::PrintCGALPolygon_2toFile("2.txt",(*Pwh_Inner_Iter).outer_boundary());
+								if (bOneIntersect)//has intersection, so continue the subtraction
+								{
+									Pwh_list_2 TempResult;
+									//CGAL::difference(*SubIter,*Pwh_Inner_Iter,std::back_inserter(TempResult));
+									GeometryAlgorithm::CGAL_difference(*SubIter,*Pwh_Inner_Iter,TempResult);
+									if (!TempResult.empty())
+									{
+										//test
+										//GeometryAlgorithm::PrintCGALPolygon_2toFile("3.txt",TempResult.front().outer_boundary());
+
+										//erase the current Outer Pwh and insert new results
+										SubResult.erase(SubIter);
+										SubResult.insert(SubResult.end(),TempResult.begin(),TempResult.end());
+										setInnerCSId.insert(j);
+									}
+									else
+									{
+										DBWindowWrite("Unable to compute difference\n");
+									}
+									//assume *Pwh_Inner_Iter contains in only one *SubIter,may have problem??
+									break;
+								}
+							}
+						}
+					}
+
+				}
+				NewResult.insert(NewResult.end(),SubResult.begin(),SubResult.end());
+			}
+			InOutPOF.vecPwhList2D.at(i)=NewResult;
+			//collect the edges that do not belong to the original CN
+			CollectAssistEdges(InputCN,InOutPOF,i,setInnerCSId);
+		}
+	}
+}
+
+void KW_CS2Surf::CollectAssistEdges(CurveNetwork InputCN,PolygonOnFace& InOutPOF,int iOutterCSID,set<int> setInnerCSId)
+{
+	vector<int> CurrentAssistEdge;
+	//collect the edges(represented by 2d segment) on original outer CS
+	vector<Segment_2> OriOutEdges;
+	for (Edge_const_iterator_2 CSEdgeIter=InputCN.Profile2D.at(iOutterCSID).edges_begin();CSEdgeIter!=InputCN.Profile2D.at(iOutterCSID).edges_end();CSEdgeIter++)
+	{
+		OriOutEdges.push_back(*CSEdgeIter);
+	}
+	//collect the edges(represented by 2d segment) on original inner CSs(if exist)
+	vector<Segment_2> OriInEdges;
+	for (set<int>::iterator SetIter=setInnerCSId.begin();SetIter!=setInnerCSId.end();SetIter++)
+	{
+		for (Edge_const_iterator_2 CSEdgeIter=InputCN.Profile2D.at(*SetIter).edges_begin();CSEdgeIter!=InputCN.Profile2D.at(*SetIter).edges_end();CSEdgeIter++)
+		{
+			OriInEdges.push_back(*CSEdgeIter);
+		}
+	}
+	//the inner polygon may also become the outer edge, so combine it into OriOutEdges
+	OriOutEdges.insert(OriOutEdges.end(),OriInEdges.begin(),OriInEdges.end());
+
+	Pwh_list_3 CurrentPwhList3;
+	for (Pwh_list_2::const_iterator  Pwh_list_2_Iter=InOutPOF.vecPwhList2D.at(iOutterCSID).begin();Pwh_list_2_Iter!=InOutPOF.vecPwhList2D.at(iOutterCSID).end(); Pwh_list_2_Iter++) 
+	{
+		Polygon_with_holes_3 CurrentPwh3;
+		vector<int> AssistOuterEdge;
+		int iOuterBoundEdge=0;
+		for (Edge_const_iterator_2 EdgeIter=(*Pwh_list_2_Iter).outer_boundary().edges_begin();EdgeIter!=(*Pwh_list_2_Iter).outer_boundary().edges_end();EdgeIter++)
+		{
+			//check the outer polygon as well as the inner polygon(the inner polygon may also become the outer edge)
+			bool bFound=false;
+			for (vector<Segment_2>::iterator OriEdgeIter=OriOutEdges.begin();OriEdgeIter!=OriOutEdges.end();OriEdgeIter++)
+			{
+				double dSrcDist=CGAL::squared_distance(EdgeIter->source(),OriEdgeIter->source());
+				double dDstDist=CGAL::squared_distance(EdgeIter->target(),OriEdgeIter->target());
+				if (dSrcDist<1 && dDstDist<1)
+				{
+					//record this edge
+					bFound=true;
+					break;
+				}
+			}
+			if (!bFound)
+			{
+				AssistOuterEdge.push_back(iOuterBoundEdge);
+			}
+			iOuterBoundEdge++;
+			//vector<Segment_2>::iterator pFind=find(OriOutEdges.begin(),OriOutEdges.end(),*EdgeIter);
+			//if (pFind==OriOutEdges.end())
+			//{
+			//	//record this edge
+			//	AssistOuterEdge.push_back(iOuterBoundEdge);
+			//}
+			//iOuterBoundEdge++;
+		}
+		CurrentPwh3.AssistOuterEdge=AssistOuterEdge;
+		CurrentPwhList3.push_back(CurrentPwh3);
+	}
+	InOutPOF.vecPwhList3D.at(iOutterCSID)=CurrentPwhList3;
+}
+
+void KW_CS2Surf::Polygon2Dto3D(CurveNetwork InputCN,PolygonOnFace& InOutPOF)
+{
+	for (unsigned int i=0;i<InOutPOF.vecPwhList2D.size();i++)
+	{
+		//the cs does not intersect with the face squre
+		//or the cs is inner of hole, don't record the 3D position
+		if (InOutPOF.vecPwhList2D.at(i).empty()||InputCN.CurveInOut.at(i)!=-1)
+		{
+			//have already put an NullPwhList3 in IntersectCSFace function,so do nothing here
+		}
+		else
+		{
+			Pwh_list_3::iterator PwhListIter=InOutPOF.vecPwhList3D.at(i).begin();
+			//convert to 3D one by one
+			for (Pwh_list_2::const_iterator  Pwh_list_2_Iter= InOutPOF.vecPwhList2D.at(i).begin();Pwh_list_2_Iter!= InOutPOF.vecPwhList2D.at(i).end(); Pwh_list_2_Iter++) 
+			{
+				//outer polygon
+				vector<Point_3> OuterPoly3D;
+				Polygon_2 OuterPoly2D=(*Pwh_list_2_Iter).outer_boundary();
+				
+				//test
+				GeometryAlgorithm::PrintCGALPolygon_2toFile("outbnd.txt",OuterPoly2D);
+
+				//convert and save
+				//GeometryAlgorithm::XOYPolygonTo3DPlanar(OuterPoly2D,OuterPoly3D,InputCN.ProfilePlaneType,InputCN.Profile3D.front().front());
+				GeometryAlgorithm::XOYPolygonTo3DPlanar(OuterPoly2D,OuterPoly3D,InputCN.plane);
+				PwhListIter->outer_boundary=OuterPoly3D;
+				//inner polygons
+				vector<vector<Point_3>> vecInnerPoly3D;
+				for (Hole_const_iterator_2 HoleIter=(*Pwh_list_2_Iter).holes_begin();HoleIter!=(*Pwh_list_2_Iter).holes_end();HoleIter++)
+				{
+					vector<Point_3> InnerPoly3D;
+					Polygon_2 InnerPoly2D=*HoleIter;
+
+					//test
+					GeometryAlgorithm::PrintCGALPolygon_2toFile("inhole.txt",InnerPoly2D);
+
+
+					//convert and save
+					//GeometryAlgorithm::XOYPolygonTo3DPlanar(InnerPoly2D,InnerPoly3D,InputCN.ProfilePlaneType,InputCN.Profile3D.front().front());
+					GeometryAlgorithm::XOYPolygonTo3DPlanar(InnerPoly2D,InnerPoly3D,InputCN.plane);
+					vecInnerPoly3D.push_back(InnerPoly3D);
+				}
+				PwhListIter->inner_hole=vecInnerPoly3D;
+				PwhListIter++;
+			}
+		}
+	}
+}
+
+void KW_CS2Surf::AlignPOFData(CurveNetwork InCN,vector<Point_3> InFace,PolygonOnFace& InOutPOF)
+{
+	vector<Point_3> vecCNPoint;
+	////test
+	//FILE* pFileCN=fopen("CN data.txt","w");
+	for (unsigned int i=0;i<InCN.Profile3D.size();i++)
+	{
+		for (unsigned int j=0;j<InCN.Profile3D.at(i).size();j++)
+		{
+			vecCNPoint.push_back(InCN.Profile3D.at(i).at(j));
+			////test
+			//fprintf(pFileCN,"%f %f %f\n",InCN.Profile3D.at(i).at(j).x(),InCN.Profile3D.at(i).at(j).y(),InCN.Profile3D.at(i).at(j).z());
+		}
+	}
+	////test
+	//fclose(pFileCN);
+	////test
+	//FILE* pFileFace=fopen("SS Face Data.txt","w");
+	//for (unsigned int i=0;i<InFace.size();i++)
+	//{
+	//	fprintf(pFileFace,"%f %f %f\n",InFace.at(i).x(),InFace.at(i).y(),InFace.at(i).z());
+	//}
+	//fclose(pFileFace);
+
+	//find the nearst point in InOutPOF and in vecCNPoint & InFace
+	//align the former to the latter
+	////test
+	//FILE* pFileB=fopen("data to align.txt","w");
+	//FILE* pFileA=fopen("data aligned.txt","w");
+	//static bool bTest=false;
+
+	for (unsigned int i=0;i<InOutPOF.vecPwhList3D.size();i++)
+	{
+		for (Pwh_list_3::iterator PwhListIter=InOutPOF.vecPwhList3D.at(i).begin();
+			PwhListIter!=InOutPOF.vecPwhList3D.at(i).end();PwhListIter++)
+		{
+			for (unsigned int j=0;j<PwhListIter->outer_boundary.size();j++)
+			{
+				////test
+				//fprintf(pFileB,"%f %f %f\n",PwhListIter->outer_boundary.at(j).x(),PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
+				//if (bTest==false)
+				//{
+				//	if (j==0 || j==PwhListIter->outer_boundary.size()-1)
+				//	{
+				//		this->vecTestPoint.push_back(PwhListIter->outer_boundary.at(j));
+				//	}
+				//}
+				//find the nearst point in CN points
+				double dMinDist=99999999;
+				Point_3 NearestPoint;
+				for (unsigned int k=0;k<vecCNPoint.size();k++)
+				{
+					double dDist=CGAL::squared_distance(PwhListIter->outer_boundary.at(j),vecCNPoint.at(k));
+					if (dDist<dMinDist)
+					{
+						dMinDist=dDist;
+						NearestPoint=vecCNPoint.at(k);
+					}
+				}
+				//continue search for the nearst point in CN points
+				for (unsigned int k=0;k<InFace.size();k++)
+				{
+					double dDist=CGAL::squared_distance(PwhListIter->outer_boundary.at(j),InFace.at(k));
+					if (dDist<dMinDist)
+					{
+						dMinDist=dDist;
+						NearestPoint=InFace.at(k);
+					}
+				}
+				//if the intersection between CNs is calculated right,every point in InOutPOF should 
+				//come from vecCNPoint & InFace
+				//if (dDist<2)
+				//DBWindowWrite("aligned one point in POF,dist: %f\n",dMinDist);
+				//DBWindowWrite("Ori point pos: %f %f %f\n",PwhListIter->outer_boundary.at(j).x(),
+				//	PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
+				if (dMinDist>5)
+				{
+					DBWindowWrite("corres. point failed to find when in align POF,dist: %f\n",dMinDist);
+				}
+				else
+				{
+					//DBWindowWrite("aligned one point in POF,dist: %f\n",dMinDist);
+					PwhListIter->outer_boundary.at(j)=NearestPoint;
+				}
+				//DBWindowWrite("Ori point pos: %f %f %f\n",PwhListIter->outer_boundary.at(j).x(),
+				//	PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
+				////test
+				//fprintf(pFileA,"%f %f %f\n",PwhListIter->outer_boundary.at(j).x(),PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
+			}
+		}
+	}
+	////test
+	//fclose(pFileB);
+	//fclose(pFileA);
+	//bTest=true;
+	//DBWindowWrite("test point size: %d\n",this->vecTestPoint.size());
+}
+
+
+
+
+
+
+
+
+
+
+
+	//test
+	vector<Point_3> CN0,CN1;
+	for (unsigned int j=0;j<vecCurveNetwork.at(0).Profile3D.size();j++)
+	{
+		for (unsigned int k=0;k<vecCurveNetwork.at(0).Profile3D.at(j).size();k++)
+		{
+			Point_3 currPoint=vecCurveNetwork.at(0).Profile3D.at(j).at(k);
+			CN0.push_back(currPoint);
+		}
+	}
+	for (unsigned int j=0;j<vecCurveNetwork.at(1).Profile3D.size();j++)
+	{
+		for (unsigned int k=0;k<vecCurveNetwork.at(1).Profile3D.at(j).size();k++)
+		{
+			Point_3 currPoint=vecCurveNetwork.at(1).Profile3D.at(j).at(k);
+			CN1.push_back(currPoint);
+		}
+	}
+
+	int iTotalFind0=0;
+	FILE* pFile=fopen("CN0.txt","w");
+	for (unsigned int i=0;i<CN0.size();i++)
+	{
+		fprintf(pFile,"%f %f %f\n",CN0.at(i).x(),CN0.at(i).y(),CN0.at(i).z());
+		vector<Point_3>::iterator pFind=find(CN1.begin(),CN1.end(),CN0.at(i));
+		if (pFind!=CN1.end())
+		{
+			iTotalFind0++;
+		}
+	}
+	fclose(pFile);
+
+	int iTotalFind1=0;
+	pFile=fopen("CN1.txt","w");
+	for (unsigned int i=0;i<CN1.size();i++)
+	{
+		fprintf(pFile,"%f %f %f\n",CN1.at(i).x(),CN1.at(i).y(),CN1.at(i).z());
+		vector<Point_3>::iterator pFind=find(CN0.begin(),CN0.end(),CN1.at(i));
+		if (pFind!=CN0.end())
+		{
+			iTotalFind1++;
+		}
+	}
+	fclose(pFile);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+	//sort the face orientation of bounding faces first,since they are axis-aligned
+	//sort the other faces in subspaces which contain bounding faces
+	//sort all the left faces
+
+	//compute the intersection points for the last curve network&other orthogonal plane
+	//and curve network on other planes&the last plane, deform the curves
+	//static bool FitLastCN(Plane_3 RefPlane[3],vector<CurveNetwork>& vecCurveNetwork, 
+	//	vector<Point_3>& vecCurvePlaneIntersectPoint,vector<int>& vecCurvePlaneIntersectType);
+
+//bool CCrossSectionProc::FitLastCN(Plane_3 RefPlane[3],vector<CurveNetwork>& vecCurveNetwork, 
+//								  vector<Point_3>& vecCurvePlaneIntersectPoint,vector<int>& vecCurvePlaneIntersectType)
+//{
+//	bool bResult=true;
+//
+//	for (unsigned int iPlane=0;iPlane<vecCurveNetwork.size()-1;iPlane++)
+//	{
+//		if (vecCurveNetwork.at(iPlane).ProfilePlaneType==vecCurveNetwork.back().ProfilePlaneType)//parallel,don't check
+//		{
+//			continue;
+//		}
+//		vector<int>::iterator::difference_type CurrentNum;//how many intersection points between current CN and plane of last CN
+//		CurrentNum = count(vecCurveNetwork.at(iPlane).IntersectCNInd.begin(), 
+//			vecCurveNetwork.at(iPlane).IntersectCNInd.end(), vecCurveNetwork.size()-1);
+//		vector<int>::iterator::difference_type BackNum;//how many intersection points between last CN and plane of current CN
+//		BackNum = count(vecCurveNetwork.back().IntersectCNInd.begin(), 
+//			vecCurveNetwork.back().IntersectCNInd.end(), iPlane);
+//		if (CurrentNum!=BackNum)//intersect number don't equal
+//		{
+//			AfxMessageBox("Intersect Num don't equal");
+//			DBWindowWrite("rule 4 is violated...\n");
+//			//DeleteLastCS(RefPlane,vecCurveNetwork,vecCurvePlaneIntersectPoint,vecCurvePlaneIntersectType);			
+//			bResult=false;
+//			break;
+//		}
+//		else if (CurrentNum==0)//both have no intersect
+//		{
+//			continue;
+//		}
+//		//intersect number equal
+//		//index of first intersection point between current CN and plane of last CN
+//		vector<int>::iterator pFindCurrent=find(vecCurveNetwork.at(iPlane).IntersectCNInd.begin(),vecCurveNetwork.at(iPlane).IntersectCNInd.end(),
+//			vecCurveNetwork.size()-1);
+//		int iFindCurrent=pFindCurrent-vecCurveNetwork.at(iPlane).IntersectCNInd.begin();
+//		//index of first intersection point between last CN and plane of current CN
+//		vector<int>::iterator pFindBack=find(vecCurveNetwork.back().IntersectCNInd.begin(),vecCurveNetwork.back().IntersectCNInd.end(),
+//			iPlane);
+//		int iFindBack=pFindBack-vecCurveNetwork.back().IntersectCNInd.begin();
+//
+//		vector<Point_3> CurrentInterPoint,BackInterPoint;
+//		//all the intersection points between current CN and plane of last CN
+//		CurrentInterPoint.insert(CurrentInterPoint.end(),vecCurveNetwork.at(iPlane).CurvePlaneIntersect.begin()+iFindCurrent,
+//			vecCurveNetwork.at(iPlane).CurvePlaneIntersect.begin()+iFindCurrent+CurrentNum);
+//		//all the intersection points between last CN and plane of current CN
+//		BackInterPoint.insert(BackInterPoint.end(),vecCurveNetwork.back().CurvePlaneIntersect.begin()+iFindBack,
+//			vecCurveNetwork.back().CurvePlaneIntersect.begin()+iFindBack+BackNum);
+//		vector<vector<int>> GroupResult;
+//		GeometryAlgorithm::GroupNearestPoints(CurrentInterPoint,BackInterPoint,GroupResult);//,vecMidPoint
+//		//compute the destination point between each pair of nearest points
+//		//here to avoid the re-movement of the point on existing curve,which will cause the originally intersected
+//		//curves become disconnected
+//		//set the destination point to the one on the existing curve directly, other than the one
+//		//on the last curve(i.e. only deform the last curve)
+//		vector<Point_3> vecMidPoint;
+//		for (unsigned int i=0;i<GroupResult.size();i++)
+//		{
+//			vecMidPoint.push_back(CurrentInterPoint.at(GroupResult.at(i).front()));
+//		}
+//
+//		//indices of curves and points of the current curve network
+//		//which are to be moved to a new positions
+//		//move them to the new positions again after deformation
+//		//to avoid their unwanted movement when they belong to the ROI of other
+//		//constraint points
+//		vector<int> viCurrentConstrPointCurveIndex;
+//		vector<int> viCurrentConstrPointIndex;
+//		//same guys for the last curve network
+//		vector<int> viBackConstrPointCurveIndex;
+//		vector<int> viBackConstrPointIndex;
+//
+//		const int iCurveDeformROIRange=6;
+//		for (unsigned int iJoint=0;iJoint<vecMidPoint.size();iJoint++)
+//		{
+//			//for current curve network
+//			//which curve
+//			int iCurveIndex=vecCurveNetwork.at(iPlane).IntersectCurveIndex.at(iFindCurrent+GroupResult.at(iJoint).front());
+//			//index of handle point
+//			int iHandleIndex;
+//			if (CGAL::has_larger_distance_to_point(CurrentInterPoint.at(iJoint),
+//				vecCurveNetwork.at(iPlane).Profile3D.at(iCurveIndex).at(vecCurveNetwork.at(iPlane).NeighborInd.at(iFindCurrent+GroupResult.at(iJoint).front()).front()),
+//				vecCurveNetwork.at(iPlane).Profile3D.at(iCurveIndex).at(vecCurveNetwork.at(iPlane).NeighborInd.at(iFindCurrent+GroupResult.at(iJoint).front()).back())))
+//			{
+//				iHandleIndex=vecCurveNetwork.at(iPlane).NeighborInd.at(iFindCurrent+GroupResult.at(iJoint).front()).back();
+//			} 
+//			else
+//			{
+//				iHandleIndex=vecCurveNetwork.at(iPlane).NeighborInd.at(iFindCurrent+GroupResult.at(iJoint).front()).front();
+//			}
+//			//store the indices
+//			viCurrentConstrPointCurveIndex.push_back(iCurveIndex);
+//			viCurrentConstrPointIndex.push_back(iHandleIndex);
+//
+//			//plane type
+//			int iCurrentPlaneType=vecCurveNetwork.at(iPlane).ProfilePlaneType;
+//			vector<int> iTemp0;iTemp0.push_back(iHandleIndex);
+//			vector<Point_3> pTemp0;pTemp0.push_back(vecMidPoint.at(iJoint));
+//			CCurveDeform::OpenCurveNaiveLaplacianDeform(vecCurveNetwork.at(iPlane).Profile3D.at(iCurveIndex),iTemp0,
+//				pTemp0,iCurveDeformROIRange,iCurrentPlaneType);//
+//
+//			//for back curve network
+//			//which curve
+//			iCurveIndex=vecCurveNetwork.back().IntersectCurveIndex.at(iFindBack+GroupResult.at(iJoint).back());
+//			//index of handle point
+//			if (CGAL::has_larger_distance_to_point(BackInterPoint.at(iJoint),
+//				vecCurveNetwork.back().Profile3D.at(iCurveIndex).at(vecCurveNetwork.back().NeighborInd.at(iFindBack+GroupResult.at(iJoint).back()).front()),
+//				vecCurveNetwork.back().Profile3D.at(iCurveIndex).at(vecCurveNetwork.back().NeighborInd.at(iFindBack+GroupResult.at(iJoint).back()).back())))
+//			{
+//				iHandleIndex=vecCurveNetwork.back().NeighborInd.at(iFindBack+GroupResult.at(iJoint).back()).back();
+//			} 
+//			else
+//			{
+//				iHandleIndex=vecCurveNetwork.back().NeighborInd.at(iFindBack+GroupResult.at(iJoint).back()).front();
+//			}
+//			//store the indices
+//			viBackConstrPointCurveIndex.push_back(iCurveIndex);
+//			viBackConstrPointIndex.push_back(iHandleIndex);
+//			//plane type
+//			iCurrentPlaneType=vecCurveNetwork.back().ProfilePlaneType;
+//			vector<int> iTemp1;iTemp1.push_back(iHandleIndex);
+//			vector<Point_3> pTemp1;pTemp1.push_back(vecMidPoint.at(iJoint));
+//			CCurveDeform::OpenCurveNaiveLaplacianDeform(vecCurveNetwork.back().Profile3D.at(iCurveIndex),iTemp1,
+//				pTemp1,iCurveDeformROIRange,iCurrentPlaneType);
+//		}
+//		//force the constraint points to the new positions again after deformation
+//		//to avoid their unwanted movement when they belong to the ROI of other
+//		//constraint points
+//		assert(viCurrentConstrPointCurveIndex.size()==vecMidPoint.size());
+//		assert(viCurrentConstrPointIndex.size()==vecMidPoint.size());
+//		assert(viBackConstrPointCurveIndex.size()==vecMidPoint.size());
+//		assert(viBackConstrPointIndex.size()==vecMidPoint.size());
+//		for (unsigned int iJoint=0;iJoint<vecMidPoint.size();iJoint++)
+//		{
+//			vecCurveNetwork.at(iPlane).Profile3D.at(viCurrentConstrPointCurveIndex.at(iJoint)).at(viCurrentConstrPointIndex.at(iJoint))
+//				=vecMidPoint.at(iJoint);
+//			vecCurveNetwork.back().Profile3D.at(viBackConstrPointCurveIndex.at(iJoint)).at(viBackConstrPointIndex.at(iJoint))
+//				=vecMidPoint.at(iJoint);
+//		}
+//		//don't forget to update the 2d polygon
+//		vecCurveNetwork.at(iPlane).Profile2D.clear();
+//		for (unsigned int iPoly2D=0;iPoly2D<vecCurveNetwork.at(iPlane).Profile3D.size();iPoly2D++)
+//		{
+//			Polygon_2 NewProfile2D;
+//			GeometryAlgorithm::PlanarPolygonToXOY(vecCurveNetwork.at(iPlane).Profile3D.at(iPoly2D),
+//				NewProfile2D,vecCurveNetwork.at(iPlane).ProfilePlaneType);
+//			vecCurveNetwork.at(iPlane).Profile2D.push_back(NewProfile2D);
+//		}
+//		GetCNIntersectPoints(vecCurveNetwork);
+//	}
+//	//don't forget to update the 2d polygon
+//	vecCurveNetwork.back().Profile2D.clear();
+//	for (unsigned int iPoly2D=0;iPoly2D<vecCurveNetwork.back().Profile3D.size();iPoly2D++)
+//	{
+//		Polygon_2 NewProfile2D;
+//		GeometryAlgorithm::PlanarPolygonToXOY(vecCurveNetwork.back().Profile3D.at(iPoly2D),
+//			NewProfile2D,vecCurveNetwork.back().ProfilePlaneType);
+//		vecCurveNetwork.back().Profile2D.push_back(NewProfile2D);
+//	}
+//	GetCurvePlaneIntersectPoints(vecCurveNetwork,RefPlane,vecCurvePlaneIntersectPoint,vecCurvePlaneIntersectType);
+//
+//	return bResult;
+//}
+
+		//bResult=CCrossSectionProc::FitLastCN(this->RefPlane,this->vecCurveNetwork,
+		//	this->vecCurvePlaneIntersectPoint,this->vecCurvePlaneIntersectType);
+
+
+	//function related to multi-thread in mesh generation
+	static DWORD WINAPI GetSubMeshThread(LPVOID pParaIn);
+
+	
+	//functions and variables related to multi-thread surface reconstruction
+	//reconstruction results of all subspaces
+	vector<vector<Point_3>> vecvecSubPoint;
+	vector<vector<vector<int>>> vecvecSubSurf;
+	int iTotalThreadCount;
+	//event used for sychronizing threads
+	HANDLE* phEventThread;
+	//event used for sychronizing iTotalThreadCount
+	HANDLE hEventThrCnt;
+	//event used for sychronizing result (vecvecSubPoint & vecvecSubSurf)
+	HANDLE hEventThrResult;
+
+
+	//multi-thread
+	this->vecvecSubPoint.clear();
+	this->vecvecSubSurf.clear();
+	this->iTotalThreadCount=0;
+	//create event
+	this->phEventThread=new HANDLE[this->iSSspacenum];
+	for (int i=0;i<this->iSSspacenum;i++)
+	{
+		this->phEventThread[i]=CreateEvent( 
+			NULL,         // default security attributes
+			true,         // manual-reset event
+			false,        // initial state is non-signaled
+			NULL);
+	}
+	this->hEventThrCnt=CreateEvent(NULL,true,true,NULL);
+	this->hEventThrResult=CreateEvent(NULL,true,true,NULL);
+	/*create thread*/
+	for (int i=0;i<this->iSSspacenum;i++)
+	{
+		DWORD threadId;
+		HANDLE hThrd=CreateThread(NULL,0,GetSubMeshThread,(LPVOID)this,0,&threadId);
+	}
+
+	WaitForMultipleObjects(this->iSSspacenum,this->phEventThread,TRUE,INFINITE);
+
+	delete [] phEventThread;
+
+
+
+DWORD WINAPI KW_CS2Surf::GetSubMeshThread(LPVOID pParaIn)
+{
+	KW_CS2Surf* kwcs2surf=(KW_CS2Surf*) pParaIn;
+	//get the id the the current subspace
+	WaitForSingleObject(kwcs2surf->hEventThrCnt,INFINITE);
+	ResetEvent(kwcs2surf->hEventThrCnt);
+	int iSubSpaceId=kwcs2surf->iTotalThreadCount;
+	kwcs2surf->iTotalThreadCount++;
+	SetEvent(kwcs2surf->hEventThrCnt);
+	//generate mesh
+	DBWindowWrite("subspace %d reconstruction begins\n",iSubSpaceId);
+	vector<Point_3> vecSubPoint;
+	vector<vector<int>> vecSubSurf;
+	bool bResult=kwcs2surf->GenSubMesh(iSubSpaceId,vecSubPoint,vecSubSurf);
+	if (bResult)
+	{
+		//save the result,to maintain the correspondence of vecSubPoint&vecSubSurf
+		//only one thread is allowed to save each time
+		WaitForSingleObject(kwcs2surf->hEventThrResult,INFINITE);
+		ResetEvent(kwcs2surf->hEventThrResult);
+		kwcs2surf->vecvecSubPoint.push_back(vecSubPoint);
+		kwcs2surf->vecvecSubSurf.push_back(vecSubSurf);
+		SetEvent(kwcs2surf->hEventThrResult);
+	}
+	SetEvent(kwcs2surf->phEventThread[iSubSpaceId]);
+	DBWindowWrite("subspace %d reconstruction ends\n",iSubSpaceId);
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	//collect the points on the face edges and record their new positions
+	vector<int> vecPointToMove;
+	vector<Point_3> vecPointNewPos;
+	for (unsigned int i=0;i<Pwh3D.AssistOuterEdge.size();i++)
+	{
+		//get the current assist edge points
+		int iStartPointID=Pwh3D.AssistOuterEdge.at(i);
+		int iEndPointID=(Pwh3D.AssistOuterEdge.at(i)+1)%Pwh3D.outer_boundary.size();
+		Point_3 StartPoint=Pwh3D.outer_boundary.at(iStartPointID);
+		Point_3 EndPoint=Pwh3D.outer_boundary.at(iEndPointID);
+		//judge which face edge does this assist outer edge lies on
+		bool btestFound=false;
+		for (unsigned int j=0;j<4;j++)
+		{
+			double dStartDist=CGAL::squared_distance(StartPoint,vecFaceEdge.at(j));
+			double dEndDist=CGAL::squared_distance(EndPoint,vecFaceEdge.at(j));
+			if (dStartDist<1 && dEndDist<1)
+			{
+				//check if this point has been moved
+				vector<int>::iterator pFindStart=find(vecPointToMove.begin(),vecPointToMove.end(),iStartPointID);
+				if (pFindStart==vecPointToMove.end())//not yet
+				{
+					vecPointToMove.push_back(iStartPointID);
+					StartPoint=StartPoint+vecWidthVect.at(j)*EXTRU_OUTBOUND_PERTRU_DIST;
+					vecPointNewPos.push_back(StartPoint);
+				}
+				else//has been moved,continue moving
+				{
+					int iPos=distance(vecPointToMove.begin(),pFindStart);
+					vecPointNewPos.at(iPos)=vecPointNewPos.at(iPos)+vecWidthVect.at(j)*EXTRU_OUTBOUND_PERTRU_DIST;
+				}
+				vector<int>::iterator pFindEnd=find(vecPointToMove.begin(),vecPointToMove.end(),iEndPointID);
+				if (pFindEnd==vecPointToMove.end())//not yet
+				{
+					vecPointToMove.push_back(iEndPointID);
+					EndPoint=EndPoint+vecWidthVect.at(j)*EXTRU_OUTBOUND_PERTRU_DIST;
+					vecPointNewPos.push_back(EndPoint);
+				}
+				else//has been moved,continue moving
+				{
+					int iPos=distance(vecPointToMove.begin(),pFindEnd);
+					vecPointNewPos.at(iPos)=vecPointNewPos.at(iPos)+vecWidthVect.at(j)*EXTRU_OUTBOUND_PERTRU_DIST;
+				}
+				btestFound=true;
+				break;
+			}
+		}
+		assert(btestFound==true);
+	}
+	assert(vecPointToMove.size()==vecPointNewPos.size());
+	//deform the outer boundary
+	if (!vecPointToMove.empty())
+	{
+		//plane type:
+		int iPlaneType=this->vecTempCN.at(FaceInfo.iFacePlaneID).ProfilePlaneType;
+		CCurveDeform::ClosedCurveNaiveLaplacianDeform(Pwh3D.outer_boundary,vecPointToMove,vecPointNewPos,iPlaneType);
+		//this->vecTestPoint=Pwh3D.outer_boundary;
+		//this->vecTestPoint.insert(this->vecTestPoint.end(),Pwh3D.outer_boundary.begin(),Pwh3D.outer_boundary.end());
+	}
+	//extrude
+	for (unsigned int i=0;i<Pwh3D.outer_boundary.size();i++)
+	{
+		if (vecPointToMove.empty())
+		{
+			NewOutBound.push_back(Pwh3D.outer_boundary.at(i)+HeightVec/2);
+		}
+		else
+		{
+			NewOutBound.push_back(Pwh3D.outer_boundary.at(i)+HeightVec/4);
+		}
+	}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//set<int> setInnerCSId;
+			//Pwh_list_2 SubResult;
+			////check all the inner holes
+			//for (unsigned int j=i+1;j<InputCN.CurveInOut.size();j++)
+			//{
+			//	if (InputCN.CurveInOut.at(j)==i)//this hole is inside the outer of hole/circle,subtract!
+			//	{
+			//		Pwh_list_2 CurrentInnerPwh=InOutPOF.vecPwhList2D.at(j);
+			//		for (Pwh_list_2::const_iterator  Pwh_Outer_Iter= InOutPOF.vecPwhList2D.at(i).begin();Pwh_Outer_Iter!= InOutPOF.vecPwhList2D.at(i).end(); Pwh_Outer_Iter++) 
+			//		{
+			//			for (Pwh_list_2::const_iterator  Pwh_Inner_Iter= CurrentInnerPwh.begin();Pwh_Inner_Iter!= CurrentInnerPwh.end(); Pwh_Inner_Iter++)
+			//			{
+			//				Pwh_list_2 TempResult;
+			//				CGAL::difference(*Pwh_Outer_Iter,*Pwh_Inner_Iter,std::back_inserter(TempResult));
+			//				if (!TempResult.empty())
+			//				{
+			//					SubResult.insert(SubResult.end(),TempResult.begin(),TempResult.end());
+			//					setInnerCSId.insert(j);
+			//				}
+			//				else
+			//				{
+			//					DBWindowWrite("Unable to compute difference\n");
+			//				}
+			//			}
+			//		}
+			//	}
+			//}
+			////save the subtraction result(if it exists)
+			//if (!SubResult.empty())
+			//{
+			//	InOutPOF.vecPwhList2D.at(i)=SubResult;
+			//}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//glLineWidth(3.0);
+	//glDisable(GL_LIGHTING);
+	////draw cutting stroke
+	//if (!this->UserInput2DProfile.empty())
+	//{
+	//	for (unsigned int i=0;i<this->UserInput2DProfile.size()-1;i++)
+	//	{
+	//		GLdouble  winX, winY, winZ; 
+	//		GLdouble posX, posY, posZ; 
+
+	//		winX =this->UserInput2DProfile.at(i).x;
+	//		winY = viewport[3] - (float)this->UserInput2DProfile.at(i).y;
+	//		glReadPixels((int)winX, (int)winY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ); 
+	//		gluUnProject(winX, winY, 0.0, modelview, projection, viewport, &posX, &posY, &posZ);
+	//		Point_3 CurrentPoint(posX,posY,posZ);
+
+	//		winX =this->UserInput2DProfile.at(i+1).x;
+	//		winY = viewport[3] - (float)this->UserInput2DProfile.at(i+1).y;
+	//		glReadPixels((int)winX, (int)winY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ); 
+	//		gluUnProject(winX, winY, 0.0, modelview, projection, viewport, &posX, &posY, &posZ);
+	//		Point_3 NextPoint(posX,posY,posZ);
+
+	//		glBegin(GL_LINES);
+	//		glColor3f(1,0,0);
+	//		glVertex3d(CurrentPoint.x(),CurrentPoint.y(),CurrentPoint.z());
+	//		glVertex3d(NextPoint.x(),NextPoint.y(),NextPoint.z());
+	//		glEnd();
+	//	}
+	//} 
+	//glEnable(GL_LIGHTING);
+	//glLineWidth(1.0);
+
+bool CMeshCreation::Fit3DProfiles()
+{
+	//	if (!bCurvesLeftToFit)
+	//	{
+	//		return false;
+	//	}
+	//
+	//	if (this->Profile3D.size()<2)
+	//	{
+	//		return false;
+	//	}
+	//
+	//	for (unsigned int i=0;i<this->Profile3D.size()-1;i++)
+	//	{
+	//		if (this->ProfilePlaneType.at(i)==this->ProfilePlaneType.back())
+	//		{
+	//			continue;
+	//		}
+	//		
+	//		//get intersection points between curve0 and plane1
+	//		vector<vector<int> > SegPoinsInd0;
+	//		vector<Point_3> InterSectPoints0;
+	//		int iIntersectNum=GeometryAlgorithm::GetClosedCurvePlaneIntersection(this->Profile3D.back(),
+	//												this->ProfilePlane.at(i),
+	//												SegPoinsInd0,InterSectPoints0);
+	//		if (iIntersectNum<2)
+	//		{
+	//			DBWindowWrite("Curve Intersection Err0 iIntersectNum:%d\n",iIntersectNum);
+	//			MessageBox(NULL,"Curve Intersection Err0!","",MB_OK);
+	//			continue;
+	//		}
+	//
+	//		//get intersection points between curve1 and plane0
+	//		vector<vector<int> > SegPoinsInd1;
+	//		vector<Point_3> InterSectPoints1;
+	//		iIntersectNum=GeometryAlgorithm::GetClosedCurvePlaneIntersection(this->Profile3D.at(i),
+	//												this->ProfilePlane.back(),
+	//												SegPoinsInd1,InterSectPoints1);
+	//		if (iIntersectNum<2)
+	//		{
+	//			DBWindowWrite("Curve Intersection Err1 iIntersectNum:%d\n",iIntersectNum);
+	//			MessageBox(NULL,"Curve Intersection Err1!","",MB_OK);
+	//			continue;
+	//		}
+	//
+	//		//there're totally 4 intersection points, group them according to positions
+	//		if (CGAL::has_larger_distance_to_point(InterSectPoints0.front(),
+	//			InterSectPoints1.front(),InterSectPoints1.back()))
+	//		{
+	//			reverse(InterSectPoints1.begin(),InterSectPoints1.end());
+	//			reverse(SegPoinsInd1.begin(),SegPoinsInd1.end());
+	//		}
+	//
+	//		//generate the two new merged points
+	//		Point_3 NewPoints[2];
+	//		for (int j=0;j<2;j++)
+	//		{
+	//			NewPoints[j]=CGAL::midpoint(InterSectPoints0.at(j),InterSectPoints1.at(j));
+	//		}
+	//
+	//		//move the points on the original curve those are nearset to new points
+	//		//to the new points
+	//		vector<int> vecHandleIndex0,vecHandleIndex1;
+	//		vector<Point_3> vecHandleNewPos0,vecHandleNewPos1;
+	//
+	//		for (int j=0;j<2;j++)
+	//		{
+	//			vector<int> temp0=SegPoinsInd0.at(j);
+	//			if (CGAL::has_larger_distance_to_point(NewPoints[j],
+	//				this->Profile3D.back().at(temp0.at(0)),
+	//				this->Profile3D.back().at(temp0.at(1))))
+	//			{
+	//				vecHandleIndex0.push_back(temp0.at(1));
+	//				vecHandleNewPos0.push_back(NewPoints[j]);
+	////				this->Profile3D.back().at(temp0.at(1))=NewPoints[j];
+	//			}
+	//			else
+	//			{
+	//				vecHandleIndex0.push_back(temp0.at(1));
+	//				vecHandleNewPos0.push_back(NewPoints[j]);
+	////				this->Profile3D.back().at(temp0.at(0))=NewPoints[j];
+	//			}
+	//
+	//			vector<int> temp1=SegPoinsInd1.at(j);
+	//			if (CGAL::has_larger_distance_to_point(NewPoints[j],
+	//				this->Profile3D.at(i).at(temp1.at(0)),
+	//				this->Profile3D.at(i).at(temp1.at(1))))
+	//			{
+	//				vecHandleIndex1.push_back(temp1.at(1));
+	//				vecHandleNewPos1.push_back(NewPoints[j]);
+	////				this->Profile3D.at(i).at(temp1.at(1))=NewPoints[j];
+	//			}
+	//			else
+	//			{
+	//				vecHandleIndex1.push_back(temp1.at(1));
+	//				vecHandleNewPos1.push_back(NewPoints[j]);
+	////				this->Profile3D.at(i).at(temp1.at(0))=NewPoints[j];
+	//			}
+	//		}
+	//
+	//		CCurveDeform::OpenCurveNaiveLaplacianDeform(this->Profile3D.back(),vecHandleIndex0,
+	//												vecHandleNewPos0,6,this->ProfilePlaneType.back());
+	//		CCurveDeform::OpenCurveNaiveLaplacianDeform(this->Profile3D.at(i),vecHandleIndex1,
+	//												vecHandleNewPos1,6,this->ProfilePlaneType.at(i));
+	//
+	////		CCurveDeform::ClosedCurveNaiveLaplacianDeform(this->Profile3D.back(),vecHandleIndex0,
+	////												vecHandleNewPos0,this->ProfilePlaneType.back());
+	////		CCurveDeform::ClosedCurveNaiveLaplacianDeform(this->Profile3D.at(i),vecHandleIndex1,
+	////												vecHandleNewPos1,this->ProfilePlaneType.at(i));
+	//
+	//	}
+	//
+	//	this->bCurvesLeftToFit=false;
+	//	GetCurvePlaneIntersectPoints();
+	return true;
+}
+
+
+
+	//this->AnchorVertices=AnchorBack;
+	//CEdgeBasedDeform::EdgeBasedDeform(dLamda,iType,iIterNum,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,
+	//		vecDeformCurvePoint3d,vecTestPoint);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream outEdgeLap("bbbbbb.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(outEdgeLap,Mesh);
+
+	//flexible edge 0 aniso
+	dLamda=0;
+	CWedgeEdgeBasedDeform::WedgeEdgeBasedDeform(dLamda,iType,iIterNum,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,
+		vecDeformCurvePoint3d,vecTestPoint,false);
+	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	std::ofstream outWedgeEdgeLap0aniso("edge0-aniso.obj",ios_base::out | ios_base::trunc);
+	print_polyhedron_wavefront(outWedgeEdgeLap0aniso,Mesh);
+
+	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+
+	//flexible edge 0.5 aniso
+	dLamda=0.5;
+	CWedgeEdgeBasedDeform::WedgeEdgeBasedDeform(dLamda,iType,iIterNum,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,
+		vecDeformCurvePoint3d,vecTestPoint,false);
+	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	std::ofstream outWedgeEdgeLap05aniso("edge05-aniso.obj",ios_base::out | ios_base::trunc);
+	print_polyhedron_wavefront(outWedgeEdgeLap05aniso,Mesh);
+
+	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+	//flexible edge 1.0 aniso
+	dLamda=1.0;
+	CWedgeEdgeBasedDeform::WedgeEdgeBasedDeform(dLamda,iType,iIterNum,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,
+		vecDeformCurvePoint3d,vecTestPoint,false);
+	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	std::ofstream outWedgeEdgeLap10aniso("edge10-aniso.obj",ios_base::out | ios_base::trunc);
+	print_polyhedron_wavefront(outWedgeEdgeLap10aniso,Mesh);
+
+
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+	//this->AnchorVertices=AnchorBack;
+
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+
+	//iIterNum=5;
+	//dLamda=0.5;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out05("05flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out05,Mesh);
+///////////////////////////////////////////////////////////////
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+	//this->AnchorVertices=AnchorBack;
+
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+
+	//iIterNum=5;
+	//dLamda=1;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out1("1flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out1,Mesh);
+/////////////////////////////////////////////////////////////////
+//	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//
+//	dLamda=0;
+//	iIterNum=5;
+//	this->AnchorVertices=AnchorBack;
+//	CEdgeBasedDeform::EdgeBasedDeform(dLamda,iType,iIterNum,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,
+//		vecDeformCurvePoint3d,vecTestPoint);
+//
+//
+////	CEdgeBasedDeform::IterativeEdgeBasedDeform(iType,5,Mesh,vecHandlePoint,vecHandleNbVertex,
+////		ROIVertices,AnchorVertices,vecDeformCurvePoint3d,vecTestPoint);
+//	
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream out2("2Edge.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(out2,Mesh);
+
+///////////////////////////////////////////////////////////////////////////
+//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+//	if (iType==1)
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+//	}
+//	else
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+//	}
+//
+//	iIterNum=5;
+//	dLamda=0;
+//	CRSRCellDeform::RSRCellDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//		this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream outRSRCell("RSRCell.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(outRSRCell,Mesh);
+//
+////////////////////////////////////////////////////////////////////////
+//	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//
+//	this->AnchorVertices=AnchorBack;
+//	if (iType==1)
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+//	}
+//	else
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+//	}
+//
+//	iIterNum=5;
+//	dLamda=0;
+//	CDeformationAlgorithm::FlexibleRSRDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//		this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	//CDeformationAlgorithm::IterativeFlexibleDeform(dLamda,iType,10,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream out0RSR("0RSRflexible.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(out0RSR,Mesh);
+/////////////////////////////////////////////////////////////////
+//	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//
+//	this->AnchorVertices=AnchorBack;
+//	if (iType==1)
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+//	}
+//	else
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+//	}
+//	iIterNum=5;
+//	dLamda=0.5;
+//	CDeformationAlgorithm::FlexibleRSRDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//		this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream out05RSR("05RSRflexible.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(out05RSR,Mesh);
+////////////////////////////////////////////////////////////////////////
+//	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//
+//	this->AnchorVertices=AnchorBack;
+//	if (iType==1)
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+//	}
+//	else
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+//	}
+//	iIterNum=5;
+//	dLamda=0;
+//	CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//		this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream out0("0flexible.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(out0,Mesh);
+///////////////////////////////////////////////////////////////////////
+//	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//
+//	this->AnchorVertices=AnchorBack;
+//
+//	if (iType==1)
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+//	}
+//	else
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+//	}
+//
+//	iIterNum=5;
+//	dLamda=0.5;
+//	CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//		this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	//CDeformationAlgorithm::IterativeFlexibleDeform(dLamda,iType,10,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream out05("05flexible.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(out05,Mesh);
+/////////////////////////////////////////////////////////////////
+//	CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//
+//	this->AnchorVertices=AnchorBack;
+//
+//	if (iType==1)
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+//	}
+//	else
+//	{
+//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+//	}
+//
+//	iIterNum=5;
+//	dLamda=1;
+//	CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//		this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	//CDeformationAlgorithm::IterativeFlexibleDeform(dLamda,iType,10,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+//	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+//	OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+//	std::ofstream out1("1flexible.obj",ios_base::out | ios_base::trunc);
+//	print_polyhedron_wavefront(out1,Mesh);
+/////////////////////////////////////////////////////////////////
+
+CDualMeshDeform::BuildDualMesh(Mesh,this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->DualMesh,
+	this->vecDualHandle,this->vecDualROI,this->vecDualAnchor);
+
+vector<Vertex_handle> temp=this->vecDualHandle;
+temp.insert(temp.end(),this->vecDualROI.begin(),this->vecDualROI.end());
+temp.insert(temp.end(),this->vecDualAnchor.begin(),this->vecDualAnchor.end());
+
+//test
+GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+
+
+CDualMeshDeform::FlexibleDualMeshDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,
+	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+DualMesh.clear();
+this->vecDualHandle.clear();this->vecDualROI.clear();this->vecDualAnchor.clear();
+
+
+//test matrix
+vector<vector<double>> LeftHandMatrixATEST;
+for (int i=0;i<LeftHandMatrixA.NRows();i++)
+{
+	vector<double> CurrentRow;
+	for (int j=0;j<LeftHandMatrixA.NCols();j++)
+	{
+		if (LeftHandMatrixA[i][j]!=0)
+		{
+			CurrentRow.push_back(LeftHandMatrixA[i][j]);
+		}
+		else
+		{
+			CurrentRow.push_back(0);
+		}
+	}
+	LeftHandMatrixATEST.push_back(CurrentRow);
+}
+//test matrix
+
+void CDualMeshDeform::TestPrint(vector<vector<double>> Matrix0,vector<vector<double>> RHS0, 
+								vector<vector<double>>& Matrix1,vector<vector<double>>& RHS1,
+								int iFacetNum)
+{
+	//get corresponding order of Matrix0 and Matrix1
+	vector<vector<int>> NonZero0,NonZero1;
+	for (unsigned int i=0;i<Matrix0.size();i++)
+	{
+		vector<int> CurrentRow;
+		for (unsigned int j=0;j<Matrix0.at(i).size();j++)
+		{
+			if (Matrix0.at(i).at(j)!=0)
+			{
+				CurrentRow.push_back(j);
+			}
+		}
+		NonZero0.push_back(CurrentRow);
+		if (i==iFacetNum-1)
+		{
+			break;
+		}
+	}
+
+	for (unsigned int i=0;i<Matrix1.size();i++)
+	{
+		vector<int> CurrentRow;
+		for (unsigned int j=0;j<Matrix1.at(i).size();j++)
+		{
+			if (Matrix1.at(i).at(j)!=0)
+			{
+				CurrentRow.push_back(j);
+			}
+		}
+		NonZero1.push_back(CurrentRow);
+		if (i==iFacetNum-1)
+		{
+			break;
+		}
+	}
+
+	//re-sort
+	vector<vector<double>> NewMatrix1,NewRHS1;
+	NewRHS1=RHS1;
+	for (unsigned int i=0;i<NonZero0.size();i++)
+	{
+		vector<vector<int>>::iterator IterToAdjust=find(NonZero1.begin(),NonZero1.end(),NonZero0.at(i));
+		if (IterToAdjust!=NonZero1.end())
+		{
+			//adjust Laplacian matrix
+			int iPlace=IterToAdjust-NonZero1.begin();
+			NewMatrix1.push_back(Matrix1.at(iPlace));
+			//adjust RHS
+			for (int j=0;j<3;j++)
+			{
+				NewRHS1.at(j).at(i)=RHS1.at(j).at(iPlace);
+			}
+		} 
+		else
+		{
+			MessageBox(NULL,"error","",MB_OK);
+		}
+	}
+
+	for (unsigned int i=iFacetNum;i<Matrix1.size();i++)
+	{
+		NewMatrix1.push_back(Matrix1.at(i));
+	}
+	Matrix1=NewMatrix1;
+
+	FILE* pfile=fopen("RHS1-before.txt","w");
+	for (unsigned int i=0;i<RHS1.front().size();i++)
+	{
+		for (int j=0;j<3;j++)
+		{
+			fprintf(pfile,"%f,",RHS1.at(j).at(i));
+		}
+		fprintf(pfile,"\n");
+	}
+	fclose(pfile);
+	
+	RHS1=NewRHS1;
+
+	pfile=fopen("RHS1-after.txt","w");
+	for (unsigned int i=0;i<RHS1.front().size();i++)
+	{
+		for (int j=0;j<3;j++)
+		{
+			fprintf(pfile,"%f,",RHS1.at(j).at(i));
+		}
+		fprintf(pfile,"\n");
+	}
+	fclose(pfile);
+
+	pfile=fopen("RHS0.txt","w");
+	for (unsigned int i=0;i<RHS0.front().size();i++)
+	{
+		for (int j=0;j<3;j++)
+		{
+			fprintf(pfile,"%f,",RHS0.at(j).at(i));
+		}
+		fprintf(pfile,"\n");
+	}
+	fclose(pfile);
+
+	pfile=fopen("Laplacian0.txt","w");
+	for (unsigned int i=0;i<Matrix0.size();i++)
+	{
+		for (unsigned int j=0;j<Matrix0.at(i).size();j++)
+		{
+			if (Matrix0.at(i).at(j)!=0)
+			{
+				fprintf(pfile,"%d: %f,",j,Matrix0.at(i).at(j));
+			}
+		}
+		fprintf(pfile,"\n");
+	}
+	fclose(pfile);
+
+	pfile=fopen("Laplacian1.txt","w");
+	for (unsigned int i=0;i<Matrix1.size();i++)
+	{
+		for (unsigned int j=0;j<Matrix1.at(i).size();j++)
+		{
+			if (Matrix1.at(i).at(j)!=0)
+			{
+				fprintf(pfile,"%d: %f,",j,Matrix1.at(i).at(j));
+			}
+		}
+		fprintf(pfile,"\n");
+	}
+	fclose(pfile);
+
+	//NonZero0.clear();NonZero1.clear();
+	//for (unsigned int i=0;i<Matrix0.size();i++)
+	//{
+	//	vector<int> CurrentRow;
+	//	for (unsigned int j=0;j<Matrix0.at(i).size();j++)
+	//	{
+	//		if (Matrix0.at(i).at(j)!=0)
+	//		{
+	//			CurrentRow.push_back(j);
+	//		}
+	//	}
+	//	NonZero0.push_back(CurrentRow);
+	//	if (i==iFacetNum-1)
+	//	{
+	//		break;
+	//	}
+	//}
+
+	//for (unsigned int i=0;i<Matrix1.size();i++)
+	//{
+	//	vector<int> CurrentRow;
+	//	for (unsigned int j=0;j<Matrix1.at(i).size();j++)
+	//	{
+	//		if (Matrix1.at(i).at(j)!=0)
+	//		{
+	//			CurrentRow.push_back(j);
+	//		}
+	//	}
+	//	NonZero1.push_back(CurrentRow);
+	//	if (i==iFacetNum-1)
+	//	{
+	//		break;
+	//	}
+	//}
+}
+
+
+
+if (iNbIndex0!=0&&iNbIndex1!=0)
+{
+	if (NeighborEdges.at(i).front()->opposite()->vertex()==vecAllVertex.at(j))
+	{
+		CurrentRow.push_back(-0.5*vecAllEdge.at(i)->GetEdgeWeights().front()-0.5*vecAllEdge.at(i)->GetEdgeWeights().back());
+	}
+	else if (NeighborEdges.at(i).at(EndVer0->vertex_degree()-2)->opposite()->vertex()==vecAllVertex.at(j))
+	{
+		CurrentRow.push_back(-0.5*vecAllEdge.at(i)->GetEdgeWeights().at(EndVer0->vertex_degree()-2)
+			-0.5*vecAllEdge.at(i)->GetEdgeWeights().at(EndVer0->vertex_degree()-1));
+	}
+	else
+	{
+		AfxMessageBox("error1!");
+		testpoints.push_back(EndVer0->point());
+		testpoints.push_back(EndVer1->point());
+		testpoints.push_back(vecAllVertex.at(j)->point());
+		return;
+		//int itest=EndVer0->vertex_degree();
+		//int itest2=EndVer1->vertex_degree();
+		//Vertex_handle test2=vecAllVertex.at(j);
+		//for (unsigned int k=0;k<NeighborEdges.at(i).size();k++)
+		//{
+		//	Vertex_handle test=NeighborEdges.at(i).at(k)->opposite()->vertex();
+		//	int isee=k;
+		//}
+	}
+}
+else if (iNbIndex0!=0||iNbIndex1!=0)
+{
+	for (unsigned int k=0;k<NeighborEdges.at(i).size();k++)
+	{
+		if (NeighborEdges.at(i).at(k)->opposite()->vertex()==vecAllVertex.at(j))
+		{
+			CurrentRow.push_back(-0.5*(vecAllEdge.at(i)->GetEdgeWeights().at(k)));
+			break;
+		}
+		if (k==NeighborEdges.at(i).size()-1)
+		{
+			AfxMessageBox("error2!");
+		}
+	}
+}
+
+
+
+	char TRANS='N';
+	int temp=LeftMatrixA.size();
+	integer iMatARow=temp;
+	temp=LeftMatrixA.front().size();
+	integer iMatACol=temp;
+	temp=RightMatrixB.size();
+	integer iMatBCol=temp;
+
+	bool bOverDetermine=false;
+	if (iMatARow>iMatACol)//overdetermined 
+	{
+		bOverDetermine=true;
+	}
+	int iFunctionNum=(int)LeftMatrixA.size();
+	int iUnknownNumInEachGroup=(int)LeftMatrixA.front().size();
+	int iGroupNum=(int)RightMatrixB.size();
+
+
+
+	//if (iMatARow*iMatACol>1999*1999)
+	//{
+	//	AfxMessageBox("not enough memo for matrix");
+	//	return false;
+	//}
+	double* A=new double[LeftMatrixA.size()*LeftMatrixA.front().size()];
+	memset(A,0x00,LeftMatrixA.size()*LeftMatrixA.front().size()*sizeof(double));
+	int iIndex=0;
+	for (unsigned int i=0;i<LeftMatrixA.front().size();i++)
+	{
+		for (unsigned int j=0;j<LeftMatrixA.size();j++)
+		{
+			A[iIndex]=LeftMatrixA.at(j).at(i);
+			iIndex++;
+		}
+	}
+
+	integer LDA=iMatARow;
+
+	double* B=new double[RightMatrixB.size()*RightMatrixB.front().size()];
+	memset(B,0x00,RightMatrixB.size()*RightMatrixB.front().size()*sizeof(double));
+	iIndex=0;
+	for (unsigned int i=0;i<RightMatrixB.size();i++)
+	{
+		for (unsigned int j=0;j<RightMatrixB.front().size();j++)
+		{
+			B[iIndex]=RightMatrixB.at(i).at(j);
+			iIndex++;
+		}
+		if (!bOverDetermine)//since B is of dimension (LDB,NRHS)!!!
+		{
+			for (int j=0;j<iUnknownNumInEachGroup-iFunctionNum;j++)
+			{
+				iIndex++;
+			}
+		}
+	}
+
+	integer LDB=max(iMatARow,iMatACol);
+
+	long iWorkSize=min(LeftMatrixA.size(),LeftMatrixA.front().size())+max(min(LeftMatrixA.size(),LeftMatrixA.front().size()),RightMatrixB.size());
+	double* WORK=new double[iWorkSize];
+	memset(WORK,0x00,iWorkSize*sizeof(double));
+//	integer LWORK=min(iMatARow,iMatACol)+max(iMatARow*iMatACol,iMatBCol)*256;
+	integer LWORK=iWorkSize;
+	integer INFO=0;
+
+	dgels_(&TRANS,&iMatARow,&iMatACol,&iMatBCol,A,&LDA,B,&LDB,WORK,&LWORK,&INFO);
+
+	if (INFO==0)
+	{
+		iIndex=0;
+		for (int i=0;i<iGroupNum;i++)
+		{
+			vector<double> CurrentResult;
+			for (int j=0;j<iUnknownNumInEachGroup;j++)
+			{
+				CurrentResult.push_back(B[iIndex]);
+				iIndex++;
+			}
+			if (bOverDetermine)
+			{
+				for (int j=0;j<iFunctionNum-iUnknownNumInEachGroup;j++)
+				{
+					//these B[iIndex] stores the residual sum of squares for the
+					//solution for each group,so skip it
+					iIndex++;
+				}
+			}
+			Result.push_back(CurrentResult);
+		}
+		delete [] A;
+		delete [] B;
+		delete [] WORK;
+		return true;
+	}
+
+	delete [] A;
+	delete [] B;
+	delete [] WORK;
+	return false;
+	
+	
+	
+	
+	
+		double value[5];
+	int colptr[4];
+	int rowind[5];
+	double RHS[3];
+
+	// create CCS matrix structure using vector class
+	value[0]=2.0;
+	value[1]=-1.0;
+	value[2]=2.0;
+	value[3]=-1.0;
+	value[4]=2.0;
+
+	colptr[0]=0;
+	colptr[1]=2;
+	colptr[2]=4;
+	colptr[3]=5;
+
+	rowind[0]=0;
+	rowind[1]=1;
+	rowind[2]=1;
+	rowind[3]=2;
+	rowind[4]=2;
+
+	// create right-hand size vector object
+	RHS[0] = 10.0;
+	RHS[1] = 2.0;
+	RHS[2] = 3.0;
+
+	// resize vectors.
+	int dim = 3;
+
+	// create TAUCS matrix from vector objects an, jn and ia
+	taucs_ccs_matrix  A; // a matrix to solve Ax=b in CCS format
+	A.n = dim;
+	A.m = dim;
+	A.flags = (TAUCS_DOUBLE | TAUCS_SYMMETRIC | TAUCS_LOWER);
+	A.colptr = colptr;
+	A.rowind = rowind;
+	A.values.d = value;
+
+	//RHS related
+	taucs_double bod[3]; 
+
+	// allocate TAUCS solution vector
+	double result[3];
+	double xod[3];
+
+	// solve the linear system
+	//Using TAUCS low-level routines
+	int*         perm;
+	int*         invperm;
+	taucs_ccs_matrix*  Aod;
+
+	void* F = NULL;
+	char* options[] = {"taucs.factor.LLT=true", NULL};
+	void* opt_arg[] = { NULL };
+
+	// 1) Reordering
+	taucs_ccs_order(&A, &perm, &invperm, "metis");
+	Aod = taucs_ccs_permute_symmetrically(&A, perm, invperm);
+	taucs_vec_permute(dim, TAUCS_DOUBLE, RHS, bod, perm);
+
+	// 2) Factoring
+	F = taucs_ccs_factor_llt_mf(Aod);	
+
+	// 3) Back substitution and reodering the solution back
+	taucs_supernodal_solve_llt(F, xod, bod);	
+	taucs_vec_ipermute(dim, TAUCS_DOUBLE, xod, result, perm);
+
+
+
+//	int i = taucs_linsolve(&A, &F, 1, x, RHS, options, opt_arg);
+
+	//if (i != TAUCS_SUCCESS)
+	//{
+	//	cout << "Solution error." << endl;
+	//	if (i==TAUCS_ERROR)
+	//		cout << "Generic error." << endl;
+
+	//	if (i==TAUCS_ERROR_NOMEM)
+	//		cout << "NOMEM error." << endl;
+
+	//	if (i==TAUCS_ERROR_BADARGS)
+	//		cout << "BADARGS error." << endl;
+
+	//	if (i==TAUCS_ERROR_MAXDEPTH)
+	//		cout << "MAXDEPTH error." << endl;
+
+	//	if (i==TAUCS_ERROR_INDEFINITE)
+	//		cout << "NOT POSITIVE DEFINITE error." << endl;
+	//}
+	//else
+	//{
+	//	cout << "Solution success." << endl;
+
+	//	for (unsigned j = 0; j < 4; j++)
+	//		cout << x[j] << endl;
+	//}
+
+	// deallocate the factorization
+	taucs_supernodal_factor_free(F);
+	taucs_ccs_free(Aod);			
+
+//	taucs_linsolve(NULL, &F, 0, NULL, NULL, NULL, NULL);
+
+
+
+
+
+
+
+
+
+	float value[5];
+	int colptr[4];
+	int rowind[5];
+	float RHS[3];
+
+	// create CCS matrix structure using vector class
+	value[0]=2.0;
+	value[1]=-1.0;
+	value[2]=2.0;
+	value[3]=-1.0;
+	value[4]=2.0;
+
+	colptr[0]=0;
+	colptr[1]=2;
+	colptr[2]=4;
+	colptr[3]=5;
+
+	rowind[0]=0;
+	rowind[1]=1;
+	rowind[2]=1;
+	rowind[3]=2;
+	rowind[4]=2;
+
+	// create right-hand size vector object
+	RHS[0] = 10.0;
+	RHS[1] = 2.0;
+	RHS[2] = 3.0;
+
+	// resize vectors.
+	int dim = 3;
+
+	// create TAUCS matrix from vector objects an, jn and ia
+	taucs_ccs_matrix* A = taucs_dccs_create(dim, dim, 5);
+	
+//	taucs_ccs_matrix  A; // a matrix to solve Ax=b in CCS format
+//	A->n = dim;
+//	A->m = dim;
+	A->flags = (TAUCS_SINGLE | TAUCS_SYMMETRIC | TAUCS_LOWER);
+	A->colptr = colptr;
+	A->rowind = rowind;
+	A->values.s = value;
+
+	// solve the linear system
+	//Using TAUCS low-level routines
+	int*         perm;
+	int*         invperm;
+	taucs_ccs_matrix*  Aod;
+
+	void* F = NULL;
+
+	// 1) Reordering
+	taucs_ccs_order(A, &perm, &invperm, "metis");
+	Aod = taucs_ccs_permute_symmetrically(A, perm, invperm);
+
+	// 2) Factoring
+	F = taucs_ccs_factor_llt_mf(Aod);	
+	taucs_ccs_free(Aod);			
+//	taucs_ccs_free(A);			
+
+
+	// 3) Back substitution and reodering the solution back
+	//RHS related
+	float bod[3]; 
+	// allocate TAUCS solution vector
+	float result[3];
+	float xod[3];
+	taucs_vec_permute(dim, TAUCS_SINGLE, RHS, bod, perm);
+	int i=taucs_supernodal_solve_llt(F, xod, bod);	
+	taucs_vec_ipermute(dim, TAUCS_SINGLE, xod, result, perm);
+
+	RHS[0]=2;RHS[1]=5;RHS[2]=8;
+	taucs_vec_permute(dim, TAUCS_SINGLE, RHS, bod, perm);
+	i=taucs_supernodal_solve_llt(F, xod, bod);	
+	taucs_vec_ipermute(dim, TAUCS_SINGLE, xod, result, perm);
+
+	// deallocate the factorization
+	taucs_supernodal_factor_free(F);
+	
+	
+	
+	
+	
+	//////////////////////////
+
+//////////////////////////
+	//iIterNum=5;
+	//dLamda=0;
+	//CDeformationAlgorithm::BuildDualMesh(Mesh,this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->DualMesh,
+	//	this->vecDualHandle,this->vecDualROI,this->vecDualAnchor);
+
+	//vector<Vertex_handle> temp=this->vecDualHandle;
+	//temp.insert(temp.end(),this->vecDualROI.begin(),this->vecDualROI.end());
+	//temp.insert(temp.end(),this->vecDualAnchor.begin(),this->vecDualAnchor.end());
+
+	////test
+	//int iType=1;
+	//if (iType==1)
+	//{
+	//	GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//}
+	//else
+	//{
+	//	GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//}
+
+
+	//CDeformationAlgorithm::FlexibleDualMeshDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,
+	//	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	//	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out0("000.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out0,Mesh);
+	//DualMesh.clear();
+	//this->vecDualHandle.clear();this->vecDualROI.clear();this->vecDualAnchor.clear();
+////////////////////////
+
+	//iIterNum=5;
+	//dLamda=0.5;
+	//CDeformationAlgorithm::BuildDualMesh(Mesh,this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->DualMesh,
+	//	this->vecDualHandle,this->vecDualROI,this->vecDualAnchor);
+
+	//temp=this->vecDualHandle;
+	//temp.insert(temp.end(),this->vecDualROI.begin(),this->vecDualROI.end());
+	//temp.insert(temp.end(),this->vecDualAnchor.begin(),this->vecDualAnchor.end());
+
+	////test
+	//iType=1;
+	//if (iType==1)
+	//{
+	//	GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//}
+	//else
+	//{
+	//	GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//}
+
+
+	//CDeformationAlgorithm::FlexibleDualMeshDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,
+	//	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	//	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out1("111.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out1,Mesh);
+	//DualMesh.clear();
+	//this->vecDualHandle.clear();this->vecDualROI.clear();this->vecDualAnchor.clear();
+
+
+/////////////////////////////////
+	//CDeformationAlgorithm::BuildDualMesh(Mesh,this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->DualMesh,
+	//	this->vecDualHandle,this->vecDualROI,this->vecDualAnchor);
+
+	//CDeformationAlgorithm::DualMeshRigidDeformTest(1,1,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,vecDeformCurvePoint3d,
+	//	DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+
+	//return;
+/////////////////////////////////
+	//vector<Point_3> OldPos;
+	//CDeformationAlgorithm::BackUpMeshGeometry(Mesh,OldPos);
+
+	////back up anchor
+	//vector<Vertex_handle> AnchorBack=this->AnchorVertices;
+
+	//int iType=1;//1 for uniform,2 for tan weighted,3 for cot weighted
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+	//
+	//iIterNum=5;
+	//dLamda=0.1;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	////std::ofstream out0("0flexible.obj",ios_base::out | ios_base::trunc);
+	////print_polyhedron_wavefront(out0,Mesh);
+	//return;
+/////////////////////////////////
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+	//this->AnchorVertices=AnchorBack;
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+
+	//iIterNum=5;
+	//dLamda=1.0;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out10("10flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out10,Mesh);
+
+/////////////////////////////////
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+	//this->AnchorVertices=AnchorBack;
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+
+	//iIterNum=5;
+	//dLamda=0.5;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out5("5flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out5,Mesh);
+
+/////////////////////////////////
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+
+	//this->AnchorVertices=AnchorBack;
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+
+	//iIterNum=5;
+	//dLamda=1.0;
+	//CDeformationAlgorithm::BuildDualMesh(Mesh,this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->DualMesh,
+	//	this->vecDualHandle,this->vecDualROI,this->vecDualAnchor);
+
+	//vector<Vertex_handle> temp=this->vecDualHandle;
+	//temp.insert(temp.end(),this->vecDualROI.begin(),this->vecDualROI.end());
+	//temp.insert(temp.end(),this->vecDualAnchor.begin(),this->vecDualAnchor.end());
+
+	////test
+	//if (iType==1)
+	//{
+	//	GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//}
+	//else
+	//{
+	//	GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//}
+
+
+	//CDeformationAlgorithm::FlexibleDualMeshDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,
+	//	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	//	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out2("dual1.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out2,Mesh);
+//////////////////
+
+
+
+//	CDeformationAlgorithm::DualMeshRigidDeform(iType,iIterNum,Mesh,this->vecHandlePoint,
+//		this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+//		this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+
+	//CDeformationAlgorithm::FlexibleDualMeshDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,
+	//	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	//	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+
+
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out0("0flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out0,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//dLamda=0.2;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out2("2flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out2,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//dLamda=0.5;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out5("5flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out5,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//dLamda=0.8;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out8("8flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out8,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//dLamda=1.0;
+	//CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out10("10flexible.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out10,Mesh);
+	
+	
+		//int iType=3;//1 for uniform,2 for tan weighted,3 for cot weighted
+	//if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+	//{
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+	//	} 
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+	//	}
+	//}
+	//else
+	//{
+	//	vector<Vertex_handle> temp=this->vecHandleNbVertex;
+	//	temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+	//	temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+	//	if (iType==1)
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+	//	}
+	//	else
+	//	{
+	//		GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+	//	}
+	//}
+	//CDeformationAlgorithm::IterativeLaplacianDeform(iType,10,Mesh,vecHandlePoint,vecHandleNbVertex,ROIVertices,AnchorVertices,vecDeformCurvePoint3d);
+
+	//CDualMeshDeform::BuildDualMesh(Mesh,this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->DualMesh,
+	//	this->vecDualHandle,this->vecDualROI,this->vecDualAnchor);
+
+	//vector<Vertex_handle> temp=this->vecDualHandle;
+	//temp.insert(temp.end(),this->vecDualROI.begin(),this->vecDualROI.end());
+	//temp.insert(temp.end(),this->vecDualAnchor.begin(),this->vecDualAnchor.end());
+
+	////test
+	//int iType=3;
+	//if (iType==1)
+	//{
+	//	GeometryAlgorithm::ComputeCGALDualMeshUniformLaplacian(temp);
+	//}
+	//else
+	//{
+	//	GeometryAlgorithm::ComputeCGALDualMeshWeightedLaplacian(temp,iType);
+	//}
+
+	//CDualMeshDeform::FlexibleDualMeshDeform(1,iType,3,Mesh,this->vecHandlePoint,
+	//	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	//	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+
+	//CDualMeshDeform::IterativeDualLaplacianDeform(iType,5,Mesh,this->vecHandlePoint,
+	//	this->vecHandleNbVertex,this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d,
+	//	this->DualMesh,vecDualHandle,vecDualROI,vecDualAnchor);
+
+
+//////////////////////////////////
+	//vector<Point_3> OldPos;
+	//CDeformationAlgorithm::BackUpMeshGeometry(Mesh,OldPos);
+
+	//CDeformationAlgorithm::NaiveLaplacianDeform(iType,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out1("1naive.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out1,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//int iIterNum=1;
+	//CDeformationAlgorithm::RigidDeform(iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out2("2rigid.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out2,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//CDeformationAlgorithm::RotatedLaplacianDeform(iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+	//	this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	//std::ofstream out3("3laplacian.obj",ios_base::out | ios_base::trunc);
+	//print_polyhedron_wavefront(out3,Mesh);
+
+	//CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+	//OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	void CDeformationAlgorithm::ComputeScaleTranslationFactor(int iType,KW_Mesh& Mesh, 
+											   vector<Vertex_handle>& vecHandleNb,
+											   vector<Vertex_handle>& ROIVertices,
+											   vector<Vertex_handle>& vecAnchorVertices)
+{
+	vector<Vertex_handle> vecAllVertices;
+	vecAllVertices.insert(vecAllVertices.end(),vecHandleNb.begin(),vecHandleNb.end());
+	vecAllVertices.insert(vecAllVertices.end(),ROIVertices.begin(),ROIVertices.end());
+	//	vecAllVertices.insert(vecAllVertices.end(),vecAnchorVertices.begin(),vecAnchorVertices.end());
+
+	for (unsigned int i=0;i<vecAllVertices.size();i++)
+	{
+		vector<double> RotationMatrix=vecAllVertices.at(i)->GetRigidDeformRotationMatrix();
+		int iOldEdgeIndex=0;
+		double dOldSum[3],dNewSum[3],dOldSquareSum[3],dOldByNewSum[3];
+		for (int j=0;j<3;j++)
+		{
+			dOldSum[j]=dNewSum[j]=dOldSquareSum[j]=dOldByNewSum[j]=0;
+		}
+		Halfedge_around_vertex_circulator Havc=vecAllVertices.at(i)->vertex_begin();
+		do 
+		{
+			//compute new edge
+			Vector_3 NewEdge=vecAllVertices.at(i)->point()-Havc->opposite()->vertex()->point();
+			//get corresponding old edge
+			Vector_3 OldEdge=vecAllVertices.at(i)->GetOldEdgeVectors().at(iOldEdgeIndex);
+			//get RotatedOldEdge=RotationMatrix*OldEdge
+			double dRotatedOldEdge[3];
+			dRotatedOldEdge[0]=RotationMatrix.at(0)*OldEdge.x()+
+				RotationMatrix.at(1)*OldEdge.y()+
+				RotationMatrix.at(2)*OldEdge.z();
+			dRotatedOldEdge[1]=RotationMatrix.at(3)*OldEdge.x()+
+				RotationMatrix.at(4)*OldEdge.y()+
+				RotationMatrix.at(5)*OldEdge.z();
+			dRotatedOldEdge[2]=RotationMatrix.at(6)*OldEdge.x()+
+				RotationMatrix.at(7)*OldEdge.y()+
+				RotationMatrix.at(8)*OldEdge.z();
+			//get weight for the edge
+			double dCurrentWeight;
+			if (iType==1)
+			{
+				dCurrentWeight=1;
+			}
+			else
+			{
+				dCurrentWeight=vecAllVertices.at(i)->GetEdgeWeights().at(iOldEdgeIndex);
+			}
+			//get dNewSum
+			dNewSum[0]=dNewSum[0]+dCurrentWeight*NewEdge.x();
+			dNewSum[1]=dNewSum[1]+dCurrentWeight*NewEdge.y();
+			dNewSum[2]=dNewSum[2]+dCurrentWeight*NewEdge.z();
+			//get dOldSum
+			dOldSum[0]=dOldSum[0]+dCurrentWeight*dRotatedOldEdge[0];
+			dOldSum[1]=dOldSum[1]+dCurrentWeight*dRotatedOldEdge[1];
+			dOldSum[2]=dOldSum[2]+dCurrentWeight*dRotatedOldEdge[2];
+			//get dOldSquareSum
+			dOldSquareSum[0]=dOldSquareSum[0]+dCurrentWeight*dRotatedOldEdge[0]*dRotatedOldEdge[0];
+			dOldSquareSum[1]=dOldSquareSum[1]+dCurrentWeight*dRotatedOldEdge[1]*dRotatedOldEdge[1];
+			dOldSquareSum[2]=dOldSquareSum[2]+dCurrentWeight*dRotatedOldEdge[2]*dRotatedOldEdge[2];
+			//get dOldByNewSum
+			dOldByNewSum[0]=dOldByNewSum[0]+dCurrentWeight*dRotatedOldEdge[0]*NewEdge.x();
+			dOldByNewSum[1]=dOldByNewSum[1]+dCurrentWeight*dRotatedOldEdge[1]*NewEdge.y();
+			dOldByNewSum[2]=dOldByNewSum[2]+dCurrentWeight*dRotatedOldEdge[2]*NewEdge.z();
+
+			Havc++;
+			iOldEdgeIndex++;
+			//construct convariance matrix S
+		} while(Havc!=vecAllVertices.at(i)->vertex_begin());
+		double dTranslation[3],dScale[3];
+		for (int j=0;j<3;j++)
+		{
+			vector<vector<double>> LeftMat,RightMat,Result;
+			vector<double> LeftRow;
+			LeftRow.push_back(dOldSquareSum[j]);
+			LeftRow.push_back(dOldSum[j]);
+			LeftMat.push_back(LeftRow);
+			LeftRow.clear();
+			LeftRow.push_back(dOldSum[j]);
+			LeftRow.push_back(vecAllVertices.at(i)->vertex_degree());
+			LeftMat.push_back(LeftRow);
+
+			vector<double> RightCol;
+			RightCol.push_back(dOldByNewSum[j]);
+			RightCol.push_back(dNewSum[j]);
+			RightMat.push_back(RightCol);
+
+			CMath::ComputeLSESmallSize(LeftMat,RightMat,Result);
+			dScale[j]=Result.front().at(0);
+			dTranslation[j]=Result.front().at(1);
+		}
+		vecAllVertices.at(i)->SetTranslationFactor(Vector_3(dTranslation[0],dTranslation[1],dTranslation[2]));
+		vecAllVertices.at(i)->SetScaleFactor(Vector_3(dScale[0],dScale[1],dScale[2]));
+	}
+}
+
+
+
+void CEdgeBasedDeform::ComputeScaleTranslationFactor(int iType,vector<Halfedge_handle>& ROIEdges,vector<vector<Halfedge_handle>> NeighborEdges)
+{
+	for (unsigned int i=0;i<ROIEdges.size();i++)
+	{
+		vector<double> RotationMatrix=ROIEdges.at(i)->GetRigidDeformRotationMatrix();
+		double dOldSum[3],dNewSum[3],dOldSquareSum[3],dOldByNewSum[3];
+		for (int j=0;j<3;j++)
+		{
+			dOldSum[j]=dNewSum[j]=dOldSquareSum[j]=dOldByNewSum[j]=0;
+		}
+
+		Point_3 CurrentPoint=CGAL::midpoint(ROIEdges.at(i)->vertex()->point(),
+			ROIEdges.at(i)->opposite()->vertex()->point());
+
+		for (unsigned int j=0;j<NeighborEdges.at(i).size();j++)
+		{
+			//compute new edge
+			Point_3 NbPoint=CGAL::midpoint(NeighborEdges.at(i).at(j)->vertex()->point(),
+				NeighborEdges.at(i).at(j)->opposite()->vertex()->point());
+			Vector_3 NewEdge=CurrentPoint-NbPoint;
+			//get corresponding old edge
+			Vector_3 OldEdge=ROIEdges.at(i)->GetOldEdgeVectors().at(j);
+			//get RotatedOldEdge=RotationMatrix*OldEdge
+			double dRotatedOldEdge[3];
+			dRotatedOldEdge[0]=RotationMatrix.at(0)*OldEdge.x()+
+				RotationMatrix.at(1)*OldEdge.y()+
+				RotationMatrix.at(2)*OldEdge.z();
+			dRotatedOldEdge[1]=RotationMatrix.at(3)*OldEdge.x()+
+				RotationMatrix.at(4)*OldEdge.y()+
+				RotationMatrix.at(5)*OldEdge.z();
+			dRotatedOldEdge[2]=RotationMatrix.at(6)*OldEdge.x()+
+				RotationMatrix.at(7)*OldEdge.y()+
+				RotationMatrix.at(8)*OldEdge.z();
+			//get weight for the edge
+			double dCurrentWeight;
+			if (iType==1)
+			{
+				dCurrentWeight=1;
+			}
+			else
+			{
+				dCurrentWeight=ROIEdges.at(i)->GetEdgeWeights().at(j);
+			}
+			//get dNewSum
+			dNewSum[0]=dNewSum[0]+dCurrentWeight*NewEdge.x();
+			dNewSum[1]=dNewSum[1]+dCurrentWeight*NewEdge.y();
+			dNewSum[2]=dNewSum[2]+dCurrentWeight*NewEdge.z();
+			//get dOldSum
+			dOldSum[0]=dOldSum[0]+dCurrentWeight*dRotatedOldEdge[0];
+			dOldSum[1]=dOldSum[1]+dCurrentWeight*dRotatedOldEdge[1];
+			dOldSum[2]=dOldSum[2]+dCurrentWeight*dRotatedOldEdge[2];
+			//get dOldSquareSum
+			dOldSquareSum[0]=dOldSquareSum[0]+dCurrentWeight*dRotatedOldEdge[0]*dRotatedOldEdge[0];
+			dOldSquareSum[1]=dOldSquareSum[1]+dCurrentWeight*dRotatedOldEdge[1]*dRotatedOldEdge[1];
+			dOldSquareSum[2]=dOldSquareSum[2]+dCurrentWeight*dRotatedOldEdge[2]*dRotatedOldEdge[2];
+			//get dOldByNewSum
+			dOldByNewSum[0]=dOldByNewSum[0]+dCurrentWeight*dRotatedOldEdge[0]*NewEdge.x();
+			dOldByNewSum[1]=dOldByNewSum[1]+dCurrentWeight*dRotatedOldEdge[1]*NewEdge.y();
+			dOldByNewSum[2]=dOldByNewSum[2]+dCurrentWeight*dRotatedOldEdge[2]*NewEdge.z();
+		}
+		double dTranslation[3],dScale[3];
+		for (int j=0;j<3;j++)
+		{
+			vector<vector<double>> LeftMat,RightMat,Result;
+			vector<double> LeftRow;
+			LeftRow.push_back(dOldSquareSum[j]);
+			LeftRow.push_back(dOldSum[j]);
+			LeftMat.push_back(LeftRow);
+			LeftRow.clear();
+			LeftRow.push_back(dOldSum[j]);
+			LeftRow.push_back(NeighborEdges.at(i).size());
+			LeftMat.push_back(LeftRow);
+
+			vector<double> RightCol;
+			RightCol.push_back(dOldByNewSum[j]);
+			RightCol.push_back(dNewSum[j]);
+			RightMat.push_back(RightCol);
+
+			CMath::ComputeLSESmallSize(LeftMat,RightMat,Result);
+			dScale[j]=Result.front().at(0);
+			dTranslation[j]=Result.front().at(1);
+		}
+		ROIEdges.at(i)->SetTranslationFactor(Vector_3(dTranslation[0],dTranslation[1],dTranslation[2]));
+		ROIEdges.at(i)->SetScaleFactor(Vector_3(dScale[0],dScale[1],dScale[2]));
+	}
+}
+
+
+
+
+
+
+
+
+
+	for (int i=0;i<6;i++)
+	{
+		iIterNum=5;
+		CDeformationAlgorithm::RestoreMeshGeometry(Mesh,OldPos);
+		OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+		if (this->AnchorVertices.empty())//the whole mesh involves in the computation
+		{
+			if (iType==1)
+			{
+				GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(Mesh);
+			} 
+			else
+			{
+				GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(Mesh,iType);
+			}
+		}
+		else
+		{
+			vector<Vertex_handle> temp=this->vecHandleNbVertex;
+			temp.insert(temp.end(),this->ROIVertices.begin(),this->ROIVertices.end());
+			temp.insert(temp.end(),this->AnchorVertices.begin(),this->AnchorVertices.end());
+			if (iType==1)
+			{
+				GeometryAlgorithm::ComputeCGALMeshUniformLaplacian(temp);
+			}
+			else
+			{
+				GeometryAlgorithm::ComputeCGALMeshWeightedLaplacian(temp,iType);
+			}
+		}
+		CString FileName;
+		switch(i)
+		{
+		case 0:
+			FileName="0flexible.obj";
+			dLamda=0.0;
+			break;
+		case 1:
+			FileName="2flexible.obj";
+			dLamda=0.2;
+			break;
+		case 2:
+			FileName="5flexible.obj";
+			dLamda=0.5;
+		    break;
+		case 3:
+			FileName="8flexible.obj";
+			dLamda=0.8;
+		    break;
+		case 4:
+			FileName="10flexible.obj";
+			dLamda=1.0;
+			break;
+		default:
+		    break;
+		}
+		CDeformationAlgorithm::FlexibleDeform(dLamda,iType,iIterNum,Mesh,this->vecHandlePoint,this->vecHandleNbVertex,
+			this->ROIVertices,this->AnchorVertices,this->vecDeformCurvePoint3d);
+		OBJHandle::UnitizeCGALPolyhedron(Mesh,false,false);
+		std::ofstream out0(FileName,ios_base::out | ios_base::trunc);
+		print_polyhedron_wavefront(out0,Mesh);
+	}
