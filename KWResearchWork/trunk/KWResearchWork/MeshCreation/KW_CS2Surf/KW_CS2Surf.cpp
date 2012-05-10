@@ -81,7 +81,7 @@ bool KW_CS2Surf::ctr2sufProc(vector<vector<Point_3> >& MeshBoundingProfile3D,vec
 	GenInitMesh();
 
 	//test
-	return false;
+	//return false;
 
  	PostProcMesh();
 
