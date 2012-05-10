@@ -1,0 +1,45 @@
+View&Selection;sketch
+select is uniquely done by right button (how about double click of left button??? or mid button?)
+
+1 Arcball: 
+translate, rotate, scale (View mode, nothing selected: right button,left button,mid button scroll)
+done
+
+2 Creation: 
+
+selection of plane (View mode, right button)
+done
+
+translate of plane (View mode, selected: left button)
+done
+
+
+sketching of cross sections (sketch mode, left button)
+done
+
+selection of cross sections (then modify (global&local) or delete) (view mode, right button)
+
+3 Others:
+
+if nothing selected,judge the type of the sketching curve to decide the mode
+
+Deformation:
+rotate reference plane (View mode, plane selected,left button)
+scale reference plane  (View mode, plane selected, mid button scroll)
+sketching handle curve or point (sketch mode, object selected, left button)
+sketching deformed handle curve or point (sketch mode, left button, handle curve exist, plane selected;set default selected plane)
+sketching ROI (circle or sketch) (sketch mode, object selected, shortcut key may be needed)
+
+Extrusion,Tunneling:
+sketching closed curve (sketch mode, object selected, left button)
+rotate reference plane (view mode, plane selected, left button (up down/left right to decide rotate direction))
+scale reference plane (view mode, plane selected, mid button scroll)
+sketching trajectory (sketch mode, left button, plane selected, closed curve exist, set default selected plane)
+
+
+Cutting:
+sketching cutting curve (sketch mode, object selected, left button)
+
+2000~2999 curves
+1000~1999 object
+0~999 reference
