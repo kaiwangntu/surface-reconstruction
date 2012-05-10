@@ -1,0 +1,690 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (P.R.C.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+#ifdef _WIN32
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\KWResearchWork.ico"
+IDR_KWResearchWorkTYPE  ICON                    "res\\KWResearchWorkDoc.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Toolbar
+//
+
+IDR_MAINFRAME TOOLBAR  16, 15
+BEGIN
+    BUTTON      ID_FILE_NEW
+    BUTTON      ID_FILE_OPEN
+    BUTTON      ID_FILE_SAVE
+    SEPARATOR
+    BUTTON      ID_EDIT_CUT
+    BUTTON      ID_EDIT_COPY
+    BUTTON      ID_EDIT_PASTE
+    SEPARATOR
+    BUTTON      ID_FILE_PRINT
+    BUTTON      ID_APP_ABOUT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MAINFRAME MENU 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&New\tCtrl+N",                ID_FILE_NEW
+        MENUITEM "&Open...\tCtrl+O",            ID_FILE_OPEN
+        MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
+        MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
+        MENUITEM SEPARATOR
+        MENUITEM "&Print...\tCtrl+P",           ID_FILE_PRINT
+        MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
+        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
+        MENUITEM SEPARATOR
+        MENUITEM "Recent File",                 ID_FILE_MRU_FILE1, GRAYED
+        MENUITEM SEPARATOR
+        MENUITEM "E&xit",                       ID_APP_EXIT
+    END
+    POPUP "&Edit"
+    BEGIN
+        MENUITEM "&Undo\tCtrl+Z",               ID_EDIT_UNDO
+        MENUITEM SEPARATOR
+        MENUITEM "Cu&t\tCtrl+X",                ID_EDIT_CUT
+        MENUITEM "&Copy\tCtrl+C",               ID_EDIT_COPY
+        MENUITEM "&Paste\tCtrl+V",              ID_EDIT_PASTE
+    END
+    POPUP "&View"
+    BEGIN
+        MENUITEM "&Toolbar",                    ID_VIEW_TOOLBAR
+        MENUITEM "&Status Bar",                 ID_VIEW_STATUS_BAR
+        POPUP "Curvature"
+        BEGIN
+            MENUITEM "None",                        ID_CURVATURE_NONE
+            MENUITEM "Mean Curvature",              ID_CURVATURE_MEANCURVATURE
+            MENUITEM "Gaussian Curvature",          ID_CURVATURE_GAUSSIANCURVATURE
+        END
+        POPUP "Mesh"
+        BEGIN
+            MENUITEM "Primal Mesh",                 ID_VIEW_PRIMALMESH
+            MENUITEM "DualMesh",                    ID_VIEW_DUALMESH
+        END
+    END
+    POPUP "Mode"
+    BEGIN
+        MENUITEM "Creation",                    ID_MODE_CREATION
+        MENUITEM "Editing",                     ID_MODE_EDITING
+        MENUITEM "Deformation",                 ID_MODE_DEFORMATION
+        MENUITEM "Extrusion",                   ID_MODE_EXTRUSION
+        MENUITEM "Cutting",                     ID_MODE_CUTTING
+        MENUITEM "Smoothing",                   ID_MODE_SMOOTHING
+        MENUITEM "Test",                        ID_MODE_TEST
+    END
+    POPUP "&Help"
+    BEGIN
+        MENUITEM "&About KWResearchWork...",    ID_APP_ABOUT
+        MENUITEM "test",                        ID_HELP_TEST
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_MAINFRAME ACCELERATORS 
+BEGIN
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
+    "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
+    "O",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
+    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
+    VK_F1,          ID_OPERATION_SNAPSHOT,  VIRTKEY, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 235, 55
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About KWResearchWork"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
+    LTEXT           "KWResearchWork Version 1.0",IDC_STATIC,40,10,119,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2009",IDC_STATIC,40,25,119,8
+    DEFPUSHBUTTON   "OK",IDOK,178,7,50,16,WS_GROUP
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "CompanyName", "TODO: <Company name>"
+            VALUE "FileDescription", "TODO: <File description>"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "KWResearchWork.exe"
+            VALUE "LegalCopyright", "TODO: (c) <Company name>.  All rights reserved."
+            VALUE "OriginalFilename", "KWResearchWork.exe"
+            VALUE "ProductName", "TODO: <Product name>"
+            VALUE "ProductVersion", "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 228
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 48
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE 
+BEGIN
+    IDP_OLE_INIT_FAILED     "OLE initialization failed.  Make sure that the OLE libraries are the correct version."
+END
+
+STRINGTABLE 
+BEGIN
+    IDR_MAINFRAME           "KWResearchWork\n\nKWResearchWork\n\n\nKWResearchWork.Document\nKWResearchWork.Document"
+END
+
+STRINGTABLE 
+BEGIN
+    AFX_IDS_APP_TITLE       "KWResearchWork"
+    AFX_IDS_IDLEMESSAGE     "Ready"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_INDICATOR_EXT        "EXT"
+    ID_INDICATOR_CAPS       "CAP"
+    ID_INDICATOR_NUM        "NUM"
+    ID_INDICATOR_SCRL       "SCRL"
+    ID_INDICATOR_OVR        "OVR"
+    ID_INDICATOR_REC        "REC"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_FILE_NEW             "Create a new document\nNew"
+    ID_FILE_OPEN            "Open an existing document\nOpen"
+    ID_FILE_CLOSE           "Close the active document\nClose"
+    ID_FILE_SAVE            "Save the active document\nSave"
+    ID_FILE_SAVE_AS         "Save the active document with a new name\nSave As"
+    ID_FILE_PAGE_SETUP      "Change the printing options\nPage Setup"
+    ID_FILE_PRINT_SETUP     "Change the printer and printing options\nPrint Setup"
+    ID_FILE_PRINT           "Print the active document\nPrint"
+    ID_FILE_PRINT_PREVIEW   "Display full pages\nPrint Preview"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
+    ID_APP_EXIT             "Quit the application; prompts to save documents\nExit"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_FILE_MRU_FILE1       "Open this document"
+    ID_FILE_MRU_FILE2       "Open this document"
+    ID_FILE_MRU_FILE3       "Open this document"
+    ID_FILE_MRU_FILE4       "Open this document"
+    ID_FILE_MRU_FILE5       "Open this document"
+    ID_FILE_MRU_FILE6       "Open this document"
+    ID_FILE_MRU_FILE7       "Open this document"
+    ID_FILE_MRU_FILE8       "Open this document"
+    ID_FILE_MRU_FILE9       "Open this document"
+    ID_FILE_MRU_FILE10      "Open this document"
+    ID_FILE_MRU_FILE11      "Open this document"
+    ID_FILE_MRU_FILE12      "Open this document"
+    ID_FILE_MRU_FILE13      "Open this document"
+    ID_FILE_MRU_FILE14      "Open this document"
+    ID_FILE_MRU_FILE15      "Open this document"
+    ID_FILE_MRU_FILE16      "Open this document"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_NEXT_PANE            "Switch to the next window pane\nNext Pane"
+    ID_PREV_PANE            "Switch back to the previous window pane\nPrevious Pane"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_WINDOW_SPLIT         "Split the active window into panes\nSplit"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EDIT_CLEAR           "Erase the selection\nErase"
+    ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
+    ID_EDIT_COPY            "Copy the selection and put it on the Clipboard\nCopy"
+    ID_EDIT_CUT             "Cut the selection and put it on the Clipboard\nCut"
+    ID_EDIT_FIND            "Find the specified text\nFind"
+    ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
+    ID_EDIT_REPEAT          "Repeat the last action\nRepeat"
+    ID_EDIT_REPLACE         "Replace specific text with different text\nReplace"
+    ID_EDIT_SELECT_ALL      "Select the entire document\nSelect All"
+    ID_EDIT_UNDO            "Undo the last action\nUndo"
+    ID_EDIT_REDO            "Redo the previously undone action\nRedo"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_VIEW_TOOLBAR         "Show or hide the toolbar\nToggle ToolBar"
+    ID_VIEW_STATUS_BAR      "Show or hide the status bar\nToggle StatusBar"
+END
+
+STRINGTABLE 
+BEGIN
+    AFX_IDS_SCSIZE          "Change the window size"
+    AFX_IDS_SCMOVE          "Change the window position"
+    AFX_IDS_SCMINIMIZE      "Reduce the window to an icon"
+    AFX_IDS_SCMAXIMIZE      "Enlarge the window to full size"
+    AFX_IDS_SCNEXTWINDOW    "Switch to the next document window"
+    AFX_IDS_SCPREVWINDOW    "Switch to the previous document window"
+    AFX_IDS_SCCLOSE         "Close the active window and prompts to save the documents"
+END
+
+STRINGTABLE 
+BEGIN
+    AFX_IDS_SCRESTORE       "Restore the window to normal size"
+    AFX_IDS_SCTASKLIST      "Activate Task List"
+END
+
+STRINGTABLE 
+BEGIN
+    AFX_IDS_PREVIEW_CLOSE   "Close print preview mode\nCancel Preview"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_MODE_CREATION        "Creation Mode"
+    ID_MODE_DEFORMATION     "Deformation Mode"
+    ID_MODE_EXTRUSION       "Extrusion Mode"
+    ID_MODE_CUTTING         "Cutting mode"
+    ID_MODE_SMOOTHING       "Smoothing mode"
+END
+
+STRINGTABLE 
+BEGIN
+    ID_MODE_EDITING         "Editing Mode"
+END
+
+#endif    // Chinese (P.R.C.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_SaveFile            ICON                    "res\\SaveFile.ico"
+IDI_NewFile             ICON                    "res\\NewFile.ico"
+IDI_OpenFile            ICON                    "res\\OpenFile.ico"
+IDI_ViewMode            ICON                    "res\\ViewMode.ico"
+IDI_SelMode             ICON                    "res\\SelMode.ico"
+IDI_SketchMode          ICON                    "res\\SketchMode.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ControlPanel DIALOGEX 0, 0, 196, 441
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    CONTROL         "",IDC_CP_TAB,"SysTabControl32",TCS_MULTILINE,6,10,182,417
+END
+
+IDD_CP_General DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "Light Position",IDC_STATIC,12,18,43,8
+    CONTROL         "",IDC_GE_SLIDER_LIGHTPOS_X,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,37,27,107,16
+    CONTROL         "",IDC_GE_SLIDER_LIGHTPOS_Y,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,37,48,107,17
+    CONTROL         "",IDC_GE_SLIDER_LIGHTPOS_Z,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,37,69,107,16
+    LTEXT           "Mesh Color",IDC_STATIC,12,88,36,8
+    CONTROL         "",IDC_GE_SLIDER_COLOR_RED,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,37,99,107,16
+    CONTROL         "",IDC_GE_SLIDER_COLOR_GREEN,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,37,119,107,16
+    CONTROL         "",IDC_GE_SLIDER_COLOR_BLUE,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,37,140,107,16
+    PUSHBUTTON      "Subdivision",IDC_GE_Subdivision,24,193,50,14
+    PUSHBUTTON      "SnapShot",IDC_GE_SnapShot,107,193,50,14
+    CONTROL         "WireFrame",IDC_GE_WireFrame,"Button",BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,9,160,47,10
+    CONTROL         "Smooth",IDC_GE_SMOOTH,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,61,160,38,10
+    CONTROL         "Hybrid",IDC_GE_Hybrid,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,102,160,35,10
+    CONTROL         "Points",IDC_GE_Points,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,140,160,35,10
+    LTEXT           "X",IDC_STATIC,24,31,8,8
+    LTEXT           "Y",IDC_STATIC,24,50,8,8
+    LTEXT           "Z",IDC_STATIC,24,70,8,8
+    LTEXT           "Red",IDC_STATIC,21,103,16,8
+    LTEXT           "Green",IDC_STATIC,17,122,20,8
+    LTEXT           "Blue",IDC_STATIC,21,143,16,8
+    CONTROL         "Show Axis",IDC_GE_Axis,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,176,49,10
+    PUSHBUTTON      "Export Scene Para",IDC_GE_Exp_Sce_Para,24,216,67,14
+    PUSHBUTTON      "Import Scene Para",IDC_GE_Imp_Sce_Para,24,238,67,14
+    CONTROL         "Preview Mesh",IDC_GE_PREMESH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,61,176,60,10
+END
+
+IDD_CP_Creation DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "GenerateMesh",IDC_CR_GenerateMesh,95,219,68,14
+    PUSHBUTTON      "AdjustContourView",IDC_CR_AdjustContourView,16,219,68,14
+    PUSHBUTTON      "ReadContour",IDC_CR_ReadContour,16,197,68,14
+    CONTROL         "Blue Plane",IDC_CR_BLUEPLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,21,49,10
+    CONTROL         "Green Plane",IDC_CR_GREENPLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,64,21,55,10
+    CONTROL         "Red Plane",IDC_CR_REDPLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,123,21,43,10
+    PUSHBUTTON      "WriteContour",IDC_CR_WriteContour,95,197,68,14
+    CONTROL         "Curve Network",IDC_CR_CN,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,44,64,10
+    CONTROL         "Only User Sketches",IDC_CR_US,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,82,44,78,10
+    GROUPBOX        "Modeling Algorithm",IDC_STATIC,15,152,147,35
+    CONTROL         "1",IDC_MOD_ALGO_TJ,"Button",BS_AUTORADIOBUTTON | WS_GROUP,34,169,20,10
+    CONTROL         "2",IDC_MOD_ALGO_PROG,"Button",BS_AUTORADIOBUTTON,94,169,20,10
+    CONTROL         "Plane Auto Rotation",IDC_CR_AUTOROT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,68,80,10
+    COMBOBOX        IDC_CR_COMBO_SINGLEPOLY,82,108,68,165,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "CS Cylinder",IDC_STATIC,30,110,38,8
+    LTEXT           "Subspace",IDC_STATIC,32,88,32,8
+    COMBOBOX        IDC_CR_COMBO_SINGLESS,82,86,68,165,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_CR_COMBO_UNIONPOLY,82,131,68,165,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Union Cylinder",IDC_STATIC,25,133,47,8
+END
+
+IDD_CP_Deformation DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Deform",IDC_DE_Deform,14,254,50,14
+    PUSHBUTTON      "Compute Dual Mesh",IDC_DE_ComputeDualMesh,14,273,70,14
+    CONTROL         "Blue Plane",IDC_DE_BASICPLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,14,46,10
+    CONTROL         "Green Plane",IDC_DE_TANGENTIALPLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,14,55,10
+    CONTROL         "Yellow Plane",IDC_DE_BINORMALPLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,118,14,52,10
+    CONTROL         "Sphere",IDC_DE_REFSPHERE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,27,46,10
+    PUSHBUTTON      "Compute Edge Mesh",IDC_DE_ComputeEdgeMesh,92,273,70,14
+    CONTROL         "",IDC_DE_SLIDER_ROI,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,9,61,158,18
+    CTEXT           "0",IDC_STATIC,3,66,8,8
+    CTEXT           "1",IDC_STATIC,167,66,8,8
+    LTEXT           "Set Region of Interest (ROI)",IDC_STATIC,9,50,95,8
+    LTEXT           "Iteration Times:",IDC_STATIC,9,90,63,8
+    LTEXT           "Lambda:",IDC_STATIC,29,108,33,8
+    EDITTEXT        IDC_DE_ITERNUM,69,87,32,16,ES_AUTOHSCROLL
+    EDITTEXT        IDC_DE_LAMBDA,69,106,32,16,ES_AUTOHSCROLL
+    PUSHBUTTON      "Set",IDC_DE_ITER_LAMBDA,115,87,45,35
+    PUSHBUTTON      "Clear ROI",IDC_DE_ClearROI,110,47,42,14
+    CONTROL         "Handles",IDC_DE_ShowHandle,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,134,41,10
+    CONTROL         "Show Material",IDC_DE_ShowMat,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,151,61,10
+    PUSHBUTTON      "Interpolation",IDC_DE_INTERPOLATION,92,253,70,14
+    GROUPBOX        "Material Settings",IDC_STATIC,10,164,161,86
+    CONTROL         "",IDC_DE_SLIDER_Material,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | TBS_ENABLESELRANGE | WS_TABSTOP,24,193,136,18
+    CTEXT           "0",IDC_STATIC,13,197,8,8
+    CTEXT           "1",IDC_STATIC,162,196,8,8
+    CTEXT           "Number",IDC_DE_Material_Value,75,213,30,13,SS_SUNKEN | WS_BORDER
+    LTEXT           "Material Value",IDC_STATIC,67,180,46,8
+    COMBOBOX        IDC_DE_COMBO_MatSetWay,20,233,68,81,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON      "Set Material",IDC_DE_SetMat,101,232,46,14
+    CONTROL         "ROI",IDC_DE_ShowROI,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,63,134,29,10
+    CONTROL         "Anchor",IDC_DE_ShowAnchor,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,107,134,39,10
+END
+
+IDD_CP_Extrusion DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Extrude",IDC_EX_Extrude,57,38,63,14
+END
+
+IDD_CP_Cutting DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "Cutting Mode",IDC_STATIC,69,54,44,8
+END
+
+IDD_CP_Smoothing DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Bilateral Smooth",IDC_SM_BilateralSmooth,58,40,64,14
+    PUSHBUTTON      "Laplacian Smooth",IDC_SM_LaplacianSmooth,58,66,64,14
+    PUSHBUTTON      "Taubin LambdaMu Smooth",IDC_SM_TaubinLambdaMuSmooth,47,94,88,14
+END
+
+IDD_CP_Test DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Line Preprocessing",IDC_STATIC,20,18,141,73
+    PUSHBUTTON      "Filter",IDC_TE_Filter,65,35,50,14
+    PUSHBUTTON      "Resample",IDC_TE_Resample,65,54,50,14
+    PUSHBUTTON      "Smooth",IDC_TE_Smooth,65,73,50,14
+END
+
+IDD_CP_Editing DIALOGEX 0, 0, 182, 410
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "Editing Mode",IDC_STATIC,69,54,42,8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_ControlPanel, DIALOG
+    BEGIN
+        LEFTMARGIN, 3
+        RIGHTMARGIN, 189
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 434
+    END
+
+    IDD_CP_General, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Creation, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Deformation, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Extrusion, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Cutting, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Smoothing, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Test, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+
+    IDD_CP_Editing, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 175
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 403
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
+    "LANGUAGE 4, 2\r\n"
+    "#pragma code_page(936)\r\n"
+    "#include ""res\\KWResearchWork.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""         // Standard components\r\n"
+    "#include ""afxprint.rc""       // printing/print preview resources\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Cursor
+//
+
+IDC_ZOOM                CURSOR                  "res\\Zoom.CUR"
+IDC_MOVE                CURSOR                  "res\\Move.cur"
+IDC_ROTATE              CURSOR                  "res\\Rotate.CUR"
+IDC_PAINTROI            CURSOR                  "res\\PaintROI.cur"
+IDC_SMOOTH              CURSOR                  "res\\Smooth.cur"
+IDC_PENCIL              CURSOR                  "res\\pencil.cur"
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+#pragma code_page(936)
+#include "res\KWResearchWork.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"         // Standard components
+#include "afxprint.rc"       // printing/print preview resources
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
