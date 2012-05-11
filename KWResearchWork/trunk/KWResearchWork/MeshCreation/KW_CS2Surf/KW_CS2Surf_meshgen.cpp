@@ -47,7 +47,9 @@ void KW_CS2Surf::GenInitMesh()
 	}
 
 	//test
-	//return;
+#ifdef KW_TEST
+	return;
+#endif
 
 	//stitch the submeshes together
 	StitchMesh(this->vecvecSubPoint,this->vecvecSubSurf,this->InitPolyh);
@@ -56,10 +58,12 @@ void KW_CS2Surf::GenInitMesh()
 bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<vector<int>>& vecSubSurf,vector<vector<Point_3>>& vecvecFacePoint)
 {
 	//test
-	//if (iSubSpaceId!=68)//66 68
-	//{
-	//	return false;
-	//}
+#ifdef KW_TEST
+	if (iSubSpaceId!=4)
+	{
+		return false;
+	}
+#endif
 
 	DBWindowWrite("build submesh in %d subspace...........................\n",iSubSpaceId);
 
@@ -100,7 +104,9 @@ bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<
 	}
 
 	//test
-	//return false;
+#ifdef KW_TEST
+	return false;
+#endif
 
 	//GmpPolyhedron GmpResult;
 	KW_Mesh ResultMesh;
@@ -249,7 +255,9 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 		bool bPert=GetOutBound(iSubSpaceId,currentFaceInfo,iFaceId,vecSSFaceTri,vecShrinkSSFaceTri,currentPwh3,HeightVec,OutBnd,ExtruCenter);
 
 		//test
-		//return;
+#ifdef KW_TEST
+		return;
+#endif
 		//if (OutBnd.outer_boundary.empty())
 		//{
 		//	return;
@@ -294,10 +302,12 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 							 Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter)
 {
 	//test
-	//if (iFaceId!=264)//284 258 278
-	//{
-	//	return false;
-	//}
+#ifdef KW_TEST
+	if (iFaceId!=26)
+	{
+		return false;
+	}
+#endif
 
 	double NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=2.1;//1.4;//1.2;//1;//0.5
 	double INTSC_POLY_EXTRU_HEIGHT=200;
@@ -1283,6 +1293,7 @@ void KW_CS2Surf::ComputeUnionInSubspace(vector<PolyhedronFromPOF> vecPFPOF,KW_Me
 		CarvePoly* pCarveNew=new CarvePoly(vecCarveFaceNew,vecCarveVerNew);
 
 		//test
+#ifdef KW_TEST
 		std::ofstream outfFinal;
 		outfFinal.open("0.obj");
 		writeOBJ(outfFinal, pCarveFinal);//std::cout
@@ -1293,6 +1304,7 @@ void KW_CS2Surf::ComputeUnionInSubspace(vector<PolyhedronFromPOF> vecPFPOF,KW_Me
 		outfNew.open("1.obj");
 		writeOBJ(outfNew, pCarveNew);//std::cout
 		outfNew.close();
+#endif
 
 		try 
 		{
@@ -1307,10 +1319,12 @@ void KW_CS2Surf::ComputeUnionInSubspace(vector<PolyhedronFromPOF> vecPFPOF,KW_Me
 		DBWindowWrite("used carve csg union, time: %d ms\n",end-start);
 
 		//test
+#ifdef KW_TEST
 		std::ofstream outfResult;
 		outfResult.open("result.obj");
 		writeOBJ(outfResult, pCarveFinal);//std::cout
 		outfResult.close();
+#endif
 
 		delete pCarveNew;pCarveNew=NULL;
 	}
@@ -1998,6 +2012,10 @@ void KW_CS2Surf::StitchMesh(vector<vector<Point_3>> vecvecSubPoint, vector<vecto
 	{
 		DBWindowWrite("border edge num: %d\n",OutPolyh.size_of_border_edges());
 		Halfedge_iterator HIter=OutPolyh.border_halfedges_begin();
+		
+		this->vecTestPoint.push_back(HIter->vertex()->point());
+		this->vecTestPoint.push_back(HIter->opposite()->vertex()->point());
+
 		Halfedge_handle HhToNewFace;
 		if (HIter->next()->is_border())
 		{
@@ -2030,6 +2048,26 @@ void KW_CS2Surf::StitchMesh(vector<vector<Point_3>> vecvecSubPoint, vector<vecto
 	}
 
 	//test
+	//for (unsigned int i=0;i<this->vecTempCN.size();i++)
+	//{
+	//	CurveNetwork currentCN=this->vecTempCN.at(i);
+	//	for (unsigned int j=0;j<currentCN.Profile3D.size();j++)
+	//	{
+	//		vector<Point_3> currentCS=currentCN.Profile3D.at(j);
+	//		for (unsigned int k=0;k<currentCS.size();k++)
+	//		{
+	//			if (i==2 && j==0 && k==3)
+	//			{
+	//				this->vecTestPoint.push_back(currentCS.at(k));
+	//			}
+	//			else if (i==2 && j==0 && k==4)
+	//			{
+	//				this->vecTestPoint.push_back(currentCS.at(k));
+	//			}
+	//		}
+	//	}
+	//}
+
 	//OBJHandle::UnitizeCGALPolyhedron(OutPolyh,false,false);
 	//this->vecUnionPoly.push_back(OutPolyh);
 
