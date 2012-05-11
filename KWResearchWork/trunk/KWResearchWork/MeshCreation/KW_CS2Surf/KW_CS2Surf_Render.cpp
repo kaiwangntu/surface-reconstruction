@@ -511,7 +511,8 @@ void KW_CS2Surf::RenderUnionPolyh()
 		}
 
 		glColor4fv(mat_dif);
-		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);	
+		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+		//glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
 		glEnable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(1.0, 1.0);
 
