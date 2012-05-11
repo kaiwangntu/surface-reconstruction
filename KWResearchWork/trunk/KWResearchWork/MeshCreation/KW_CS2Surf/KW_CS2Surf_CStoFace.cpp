@@ -284,7 +284,7 @@ void KW_CS2Surf::AlignPOFData(CurveNetwork InCN,vector<Point_3> InFace,PolygonOn
 			//DBWindowWrite("aligned one point in POF,dist: %f\n",dMinDist);
 			//DBWindowWrite("Ori point pos: %f %f %f\n",PwhListIter->outer_boundary.at(j).x(),
 			//	PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
-			if (dMinDist>6)//5
+			if (dMinDist>15)//6
 			{
 				DBWindowWrite("corres. point failed to find when in align POF,dist: %f\n",dMinDist);
 			}
