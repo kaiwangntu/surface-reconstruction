@@ -3012,7 +3012,7 @@ void GeometryAlgorithm::RemoveCGALInterDupPoints(Pwh_list_2& IntersectResult)
 		for (Vertex_iterator_2 VerIter=(*PwhIter).outer_boundary().vertices_begin();
 			VerIter!=(*PwhIter).outer_boundary().vertices_end();VerIter++)
 		{
-			if (CGAL::squared_distance(LastPoint,(*VerIter))>20)//1
+			if (CGAL::squared_distance(LastPoint,(*VerIter))>20)//20
 			{
 				NewPoly.push_back(*VerIter);
 				LastPoint=*VerIter;
@@ -3027,7 +3027,7 @@ void GeometryAlgorithm::RemoveCGALInterDupPoints(Pwh_list_2& IntersectResult)
 			Point_2 LastPoint=*VerIterLast;
 			for (Vertex_iterator_2 VerIter=(*HoleIter).vertices_begin();VerIter!=(*HoleIter).vertices_end();VerIter++)
 			{
-				if (CGAL::squared_distance(LastPoint,*VerIter)>20)//0.5
+				if (CGAL::squared_distance(LastPoint,*VerIter)>20)//20
 				{
 					NewPoly.push_back(*VerIter);
 					LastPoint=*VerIter;
