@@ -299,12 +299,13 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 	//	return false;
 	//}
 
-	float NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=2.1;//1.4;//1.2;//1;//0.5
+	double NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=2.1;//1.4;//1.2;//1;//0.5
+	double INTSC_POLY_EXTRU_HEIGHT=200;
 
 	//get the center of the CS
 	Point_3 CSCenter=CGAL::centroid(Pwh3DIn.outer_boundary.begin(),Pwh3DIn.outer_boundary.end());
-	const int iLenStep=10;//10;
-	const int iScaleStep=10;//10;//5;
+	int iLenStep=10;//10;
+	int iScaleStep=10;//10;//5;
 
 	if (Pwh3DIn.bIntersectSSFace)
 	{
@@ -343,7 +344,7 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 		for (int iLengh=iLenStep;iLengh>0;iLengh--)
 		{
 			HeightVec=HeightVec/sqrt(HeightVec.squared_length());
-			HeightVec=HeightVec*200;//150;//600;//900;//1000;
+			HeightVec=HeightVec*INTSC_POLY_EXTRU_HEIGHT;//150;//600;//900;//1000;
 			Point_3 TransCenter=CSCenter+HeightVec*(double)iLengh/(double)iLenStep;
 			//if the center of the extruded pwh is outside the ss,then shrink the length without further adjustment
 			if (!JudgePointInsideSSStrict(TransCenter,vecShrinkSSFaceTri))
@@ -467,7 +468,7 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 					int iLastOutPoinNum=ExtrudePwh.outer_boundary.size();
 					vector<Point_3> vecLastPointPos=ExtrudePwh.outer_boundary;
 					vector<int> vecLastInOutflag=ExtrudePwh.outer_bound_flag;
-					const int iMoveStep=5;
+					int iMoveStep=5;
 					for (int iMove=0;iMove<=iMoveStep;iMove++)
 					{
 						int iCurrOutPointNum=0;
@@ -497,7 +498,8 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 							vecLastInOutflag=ExtrudePwh.outer_bound_flag;
 						}
 					}
-					
+
+					//only scale points outside the ss
 					for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
 					{
 						//if the boundary point is already inside,keep fixed
@@ -550,7 +552,7 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 						Point_3 TransPoint=ScalePoint;//+CstoSSCenterVect*(double)iCenter/(double)iMoveStep;
 						//extrude
 						HeightVec=HeightVec/sqrt(HeightVec.squared_length());
-						HeightVec=HeightVec*200;//150;//600;//900;//1000;
+						HeightVec=HeightVec*INTSC_POLY_EXTRU_HEIGHT;//150;//600;//900;//1000;
 						TransPoint=TransPoint+HeightVec*(double)iLengh/(double)iLenStep;//*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO;
 						ExtrudePwh.inner_hole.at(i).at(j)=TransPoint;
 					}
@@ -601,7 +603,8 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 			}
 
 			//rescale the radius until all vertices are inside the subspace
-			for (int iScale=0;iScale<iScaleStep;iScale++)
+			//for (int iScale=0;iScale<iScaleStep;iScale++)
+			for (int iScale=0;iScale<iScaleStep/2;iScale++)
 			{
 				for (unsigned int i=0;i<Pwh3DIn.outer_boundary.size();i++)
 				{
