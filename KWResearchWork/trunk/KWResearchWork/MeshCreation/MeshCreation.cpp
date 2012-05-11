@@ -326,7 +326,7 @@ void CMeshCreation::StopTransformDrawingPlane()
 		//test:filter for sampling data for reconstruction
 		for (unsigned int i=0;i<this->vecComputedCS.size();i++)
 		{
-			GeometryAlgorithm::ResampleCurvePoint3D(vecComputedCS.at(i),vecComputedCS.at(i).size()-6);
+			GeometryAlgorithm::ResampleCurvePoint3D(vecComputedCS.at(i),vecComputedCS.at(i).size()-10);//-6
 		}
 	}
 
