@@ -338,6 +338,7 @@ public:
 	static bool CGAL_do_intersect(Segment_3 Seg,Triangle_3 Tri);
 	static bool CGAL_do_intersect(Ray_3 Ray,Triangle_3 Tri);
 	static bool CGAL_do_intersect(KW_Mesh Poly0,KW_Mesh Poly1);
+	static bool CGAL_do_intersect(Triangle_3 Tri,Plane_3 Pln);
 	static void CGAL_intersection(Polygon_2 Poly0,Polygon_2 Poly1,Pwh_list_2& IntersectResult);
 	static void CGAL_intersection(Polygon_2 Poly0,Polygon_with_holes_2 Pwh1,Pwh_list_2& IntersectResult);
 	static void CGAL_difference(Polygon_with_holes_2 Pwh0,Polygon_with_holes_2 Pwh1,Pwh_list_2& DiffResult);
