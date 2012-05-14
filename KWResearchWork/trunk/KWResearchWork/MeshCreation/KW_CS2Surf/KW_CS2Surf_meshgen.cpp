@@ -5,6 +5,8 @@
 #include "../../Math/glu_tesselator.h"
 #include "../../OBJHandle.h"
 
+//#define  KW_TEST
+
 void KW_CS2Surf::GenInitMesh()
 {
 	for (int i=0;i<this->iSSspacenum;i++)
@@ -59,7 +61,7 @@ bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<
 {
 	//test
 #ifdef KW_TEST
-	if (iSubSpaceId!=4)
+	if (iSubSpaceId!=22)
 	{
 		return false;
 	}
@@ -256,7 +258,7 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 
 		//test
 #ifdef KW_TEST
-		return;
+//		return;
 #endif
 		//if (OutBnd.outer_boundary.empty())
 		//{
@@ -303,10 +305,10 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 {
 	//test
 #ifdef KW_TEST
-	if (iFaceId!=26)
-	{
-		return false;
-	}
+	//if (iFaceId!=26)
+	//{
+	//	return false;
+	//}
 #endif
 
 	double NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=2.1;//1.4;//1.2;//1;//0.5
@@ -495,7 +497,7 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 								iCurrOutPointNum++;
 							}
 						}
-						if (iCurrOutPointNum>iLastOutPoinNum)
+						if (iCurrOutPointNum>iLastOutPoinNum || iLastOutPoinNum==0)
 						{
 							ExtrudePwh.outer_boundary=vecLastPointPos;
 							ExtrudePwh.outer_bound_flag=vecLastInOutflag;
@@ -584,7 +586,7 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 	}
 	else
 	{
-		DBWindowWrite("Pwh does NOT intersects face...\n");
+		DBWindowWrite("Pwh does NOT intersect face...\n");
 		//shrink the length of the cylinder
 		for (int iLengh=iLenStep;iLengh>0;iLengh--)
 		{
@@ -2013,8 +2015,8 @@ void KW_CS2Surf::StitchMesh(vector<vector<Point_3>> vecvecSubPoint, vector<vecto
 		DBWindowWrite("border edge num: %d\n",OutPolyh.size_of_border_edges());
 		Halfedge_iterator HIter=OutPolyh.border_halfedges_begin();
 		
-		this->vecTestPoint.push_back(HIter->vertex()->point());
-		this->vecTestPoint.push_back(HIter->opposite()->vertex()->point());
+		//this->vecTestPoint.push_back(HIter->vertex()->point());
+		//this->vecTestPoint.push_back(HIter->opposite()->vertex()->point());
 
 		Halfedge_handle HhToNewFace;
 		if (HIter->next()->is_border())
