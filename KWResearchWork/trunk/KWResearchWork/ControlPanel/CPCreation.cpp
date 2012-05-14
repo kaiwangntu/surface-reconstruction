@@ -383,7 +383,21 @@ void CCPCreation::OnCbnDropdownCrComboSinglepoly()
 	}
 	CR_SINGLEPOLY.AddString(_T("All"));
 	CR_SINGLEPOLY.AddString(_T("None"));
-	CR_SINGLEPOLY.SetCurSel(-1);
+	//CR_SINGLEPOLY.SetCurSel(-1);
+
+	//which cylinder has been selected
+	if (pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderSinglePolyIndex()==CR_RENDER_NONE_SINGLE_CYLINDER)
+	{
+		CR_SINGLEPOLY.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetCSCylinderNum()+1);
+	}
+	else if (pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderSinglePolyIndex()==CR_RENDER_ALL_SINGLE_CYLINDER)
+	{
+		CR_SINGLEPOLY.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetCSCylinderNum());
+	}
+	else
+	{
+		CR_SINGLEPOLY.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderSinglePolyIndex());
+	}
 }
 
 void CCPCreation::OnCbnSelendokCrComboSinglepoly()
@@ -419,6 +433,23 @@ void CCPCreation::OnCbnDropdownCrComboSingless()
 			_itoa_s( i,buffer,65,10);
 			CR_SINGLESS.AddString(_T(buffer));
 		}
+		CR_SINGLESS.AddString(_T("All"));
+		CR_SINGLESS.AddString(_T("None"));
+		//CR_SINGLESS.SetCurSel(-1);
+
+		//which subspace has been selected
+		if (pDoc->GetMeshCreation().GetCS2Surf()->GetRenderSingleSSIndex()==CR_RENDER_NONE_SS)
+		{
+			CR_SINGLESS.SetCurSel(pDoc->GetMeshCreation().GetCS2Surf()->GetSSNum()+1);
+		}
+		else if (pDoc->GetMeshCreation().GetCS2Surf()->GetRenderSingleSSIndex()==CR_RENDER_ALL_SS)
+		{
+			CR_SINGLESS.SetCurSel(pDoc->GetMeshCreation().GetCS2Surf()->GetSSNum());
+		}
+		else
+		{
+			CR_SINGLESS.SetCurSel(pDoc->GetMeshCreation().GetCS2Surf()->GetRenderSingleSSIndex());
+		}
 	}
 	else if (pDoc->GetMeshCreation().GetSurfReconstAlgorithm()==ProgSurfReconstAlgo
 		&& pDoc->GetMeshCreation().GetKW_CS2Surf()!=NULL)
@@ -431,10 +462,24 @@ void CCPCreation::OnCbnDropdownCrComboSingless()
 			_itoa_s( i,buffer,65,10);
 			CR_SINGLESS.AddString(_T(buffer));
 		}
+		CR_SINGLESS.AddString(_T("All"));
+		CR_SINGLESS.AddString(_T("None"));
+		//CR_SINGLESS.SetCurSel(-1);
+
+		//which subspace has been selected
+		if (pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderSingleSSIndex()==CR_RENDER_NONE_SS)
+		{
+			CR_SINGLESS.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetSSNum()+1);
+		}
+		else if (pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderSingleSSIndex()==CR_RENDER_ALL_SS)
+		{
+			CR_SINGLESS.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetSSNum());
+		}
+		else
+		{
+			CR_SINGLESS.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderSingleSSIndex());
+		}
 	}
-	CR_SINGLESS.AddString(_T("All"));
-	CR_SINGLESS.AddString(_T("None"));
-	CR_SINGLESS.SetCurSel(-1);
 }
 
 void CCPCreation::OnCbnSelendokCrComboSingless()
@@ -488,7 +533,21 @@ void CCPCreation::OnCbnDropdownCrComboUnionpoly()
 	}
 	CR_UNIONPOLY.AddString(_T("All"));
 	CR_UNIONPOLY.AddString(_T("None"));
-	CR_UNIONPOLY.SetCurSel(-1);
+	//CR_UNIONPOLY.SetCurSel(-1);
+
+	//which cylinder has been selected
+	if (pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderUNPolyIndex()==CR_RENDER_NONE_UNION_CYLINDER)
+	{
+		CR_UNIONPOLY.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetUNCylinderNum()+1);
+	}
+	else if (pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderUNPolyIndex()==CR_RENDER_ALL_UNION_CYLINDER)
+	{
+		CR_UNIONPOLY.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetUNCylinderNum());
+	}
+	else
+	{
+		CR_UNIONPOLY.SetCurSel(pDoc->GetMeshCreation().GetKW_CS2Surf()->GetRenderUNPolyIndex());
+	}
 }
 
 void CCPCreation::OnCbnSelendokCrComboUnionpoly()
