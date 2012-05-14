@@ -98,6 +98,7 @@ typedef Eekernel::Direction_3 EeDirection_3;
 typedef Eekernel::Vector_3 EeVector_3;
 typedef Eekernel::Segment_3 EeSegment_3;
 typedef Eekernel::Triangle_3 EeTriangle_3;
+typedef Eekernel::Plane_3 EePlane_3;
 typedef CGAL::Polygon_2<Eekernel>                           EePolygon_2;
 typedef CGAL::Polygon_with_holes_2<Eekernel>                EePolygon_with_holes_2;
 typedef std::list<EePolygon_with_holes_2>                   EePwh_list_2;
