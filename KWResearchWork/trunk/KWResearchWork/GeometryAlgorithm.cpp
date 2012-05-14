@@ -2519,7 +2519,9 @@ int GeometryAlgorithm::GetMeshPlaneIntersection(KW_Mesh mesh,Plane_3 plane,vecto
 		} while( Hafc!= Fi->facet_begin());
 		Triangle_3 CurrentTri(TriVertex[0],TriVertex[1],TriVertex[2]);
 
-		if (CGAL::do_intersect(CurrentTri,plane))
+		assert(!CurrentTri.is_degenerate());
+
+		if (CGAL::do_intersect(CurrentTri,plane))//CGAL_do_intersect(CurrentTri,plane)
 		{
 			vecIntersectFacet.push_back(Fi);
 		}
@@ -2784,6 +2786,15 @@ bool GeometryAlgorithm::CGAL_do_intersect(Ray_3 Ray,Triangle_3 Tri)
 		EePoint_3(Tri.vertex(2).x(),Tri.vertex(2).y(),Tri.vertex(2).z()));
 	bool bTest=EeTri.is_degenerate();
 	return CGAL::do_intersect(EeRay,EeTri);
+}
+
+bool GeometryAlgorithm::CGAL_do_intersect(Triangle_3 Tri,Plane_3 Pln)
+{
+	EeTriangle_3 EeTri(EePoint_3(Tri.vertex(0).x(),Tri.vertex(0).y(),Tri.vertex(0).z()),
+		EePoint_3(Tri.vertex(1).x(),Tri.vertex(1).y(),Tri.vertex(1).z()),
+		EePoint_3(Tri.vertex(2).x(),Tri.vertex(2).y(),Tri.vertex(2).z()));
+	EePlane_3 EePln(Pln.a(),Pln.b(),Pln.c(),Pln.d());
+	return CGAL::do_intersect(EeTri,EePln);
 }
 
 bool GeometryAlgorithm::CGAL_do_intersect(KW_Mesh Poly0,KW_Mesh Poly1)
