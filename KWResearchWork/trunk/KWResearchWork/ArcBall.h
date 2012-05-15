@@ -23,11 +23,11 @@
 // 8<--Snip here if you have your own math types/funcs-->8 
 
 //Only support assertions in debug builds
-#ifdef _DEBUG
-# include "assert.h"
-#else
-# define assert(x) { }
-#endif
+//#ifdef _DEBUG
+//# include "assert.h"
+//#else
+//# define assert(x) { }
+//#endif
 
 #include "GeometryAlgorithm.h"
 #include <math.h>
