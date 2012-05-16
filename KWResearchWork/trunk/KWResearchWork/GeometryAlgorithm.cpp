@@ -2504,6 +2504,7 @@ void GeometryAlgorithm::GroupNearestPoints(std::vector<Point_3> vecPoint0,std::v
 
 int GeometryAlgorithm::GetMeshPlaneIntersection(KW_Mesh mesh,Plane_3 plane,vector<vector<Point_3>>& IntersectCurves)
 {
+	assert(mesh.is_pure_triangle());
 	//collect the triangles which intersect with the plane
 	vector<Facet_iterator> vecIntersectFacet;
 	for ( Facet_iterator Fi=mesh.facets_begin(); Fi!=mesh.facets_end(); Fi++)
@@ -2518,9 +2519,7 @@ int GeometryAlgorithm::GetMeshPlaneIntersection(KW_Mesh mesh,Plane_3 plane,vecto
 			Hafc++;
 		} while( Hafc!= Fi->facet_begin());
 		Triangle_3 CurrentTri(TriVertex[0],TriVertex[1],TriVertex[2]);
-
 		assert(!CurrentTri.is_degenerate());
-
 		if (CGAL::do_intersect(CurrentTri,plane))//CGAL_do_intersect(CurrentTri,plane)
 		{
 			vecIntersectFacet.push_back(Fi);
