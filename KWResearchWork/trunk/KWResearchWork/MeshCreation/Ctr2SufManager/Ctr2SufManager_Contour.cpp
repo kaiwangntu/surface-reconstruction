@@ -109,7 +109,7 @@ void Ctr2SufManager::addContour(const int filenum, char** fnames)
 void Ctr2SufManager::addContourFromVec(vector<CurveNetwork> vecCurveNetwork,float* fPreSetBBox,vector<vector<Point_3>>& MeshBoundingProfile3D)
 {
 	ContourHandler::readContourFromVec(vecCurveNetwork,param, ctrvers, ctredges, bbox, bboxset);
-	
+
 	//kw: set the bbox to the preset value,instead of the one calculated
 	memcpy(bbox,fPreSetBBox,sizeof(float)*6);
 
