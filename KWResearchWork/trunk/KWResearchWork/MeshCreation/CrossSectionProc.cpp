@@ -549,6 +549,7 @@ bool CCrossSectionProc::FitSpecifiedCN(int iSpecifiedCN,Plane_3 RefPlane[3],vect
 			//check the distance from the two end points of SegAB to the intersection point
 			double dDist0=CGAL::squared_distance(PointAB,vecCurveNetwork.at(iPlane).Profile3D.at(iCurveAB).at(SegAB.front()));
 			double dDist1=CGAL::squared_distance(PointAB,vecCurveNetwork.at(iPlane).Profile3D.at(iCurveAB).at(SegAB.back()));
+			double dMinDist=dDist0<dDist1?dDist0:dDist1;
 			//same points
 			if (PointAB==vecCurveNetwork.at(iPlane).Profile3D.at(iCurveAB).at(SegAB.front()))
 			{
@@ -559,11 +560,11 @@ bool CCrossSectionProc::FitSpecifiedCN(int iSpecifiedCN,Plane_3 RefPlane[3],vect
 				vecCurveNetwork.at(iPlane).Profile3D.at(iCurveAB).at(SegAB.back())=PointAB;
 			}
 			//if distance is small, then just move the end point;else, insert the intersection point
-			else if (dDist0<0.0001)//0.0001
+			else if ((dMinDist==dDist0) && (dMinDist<0.0001))//0.0001
 			{
 				vecCurveNetwork.at(iPlane).Profile3D.at(iCurveAB).at(SegAB.front())=PointAB;
 			}
-			else if (dDist1<0.0001)
+			else if ((dMinDist==dDist1) && (dMinDist<0.0001))
 			{
 				vecCurveNetwork.at(iPlane).Profile3D.at(iCurveAB).at(SegAB.back())=PointAB;
 			}
@@ -592,6 +593,7 @@ bool CCrossSectionProc::FitSpecifiedCN(int iSpecifiedCN,Plane_3 RefPlane[3],vect
 			//check the distance from the two end points of SegBA to the intersection point
 			dDist0=CGAL::squared_distance(PointAB,vecCurveNetwork.at(iSpecifiedCN).Profile3D.at(iCurveBA).at(SegBA.front()));
 			dDist1=CGAL::squared_distance(PointAB,vecCurveNetwork.at(iSpecifiedCN).Profile3D.at(iCurveBA).at(SegBA.back()));
+			dMinDist=dDist0<dDist1?dDist0:dDist1;
 			//same points
 			if (PointAB==vecCurveNetwork.at(iSpecifiedCN).Profile3D.at(iCurveBA).at(SegBA.front()))
 			{
@@ -602,11 +604,11 @@ bool CCrossSectionProc::FitSpecifiedCN(int iSpecifiedCN,Plane_3 RefPlane[3],vect
 				vecCurveNetwork.at(iSpecifiedCN).Profile3D.at(iCurveBA).at(SegBA.back())=PointAB;
 			}
 			//if distance is small, then just move the end point to PointAB directly;else, insert the intersection point
-			else if (dDist0<0.0001)
+			else if ((dMinDist==dDist0) && (dMinDist<0.0001))
 			{
 				vecCurveNetwork.at(iSpecifiedCN).Profile3D.at(iCurveBA).at(SegBA.front())=PointAB;
 			}
-			else if (dDist1<0.0001)
+			else if ((dMinDist==dDist1) && (dMinDist<0.0001))
 			{
 				vecCurveNetwork.at(iSpecifiedCN).Profile3D.at(iCurveBA).at(SegBA.back())=PointAB;
 			}
