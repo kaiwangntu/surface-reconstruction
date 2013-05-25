@@ -8,6 +8,7 @@ CMeshCreation::CMeshCreation(void)
 {
 	this->manager=NULL;
 	this->kwcs2surf=NULL;
+	this->CtrFileName.Empty();
 }
 
 CMeshCreation::~CMeshCreation(void)
@@ -16,6 +17,7 @@ CMeshCreation::~CMeshCreation(void)
 	delete this->manager;
 	this->kwcs2surf=NULL;
 	delete this->kwcs2surf;
+	this->CtrFileName.Empty();
 }
 
 void CMeshCreation::Init(CKWResearchWorkDoc* pDataIn)
@@ -322,12 +324,23 @@ void CMeshCreation::StopTransformDrawingPlane()
 		this->vecComputedCS.clear();
 		GeometryAlgorithm::GetMeshPlaneIntersection(this->pDoc->GetMesh(),this->RefPlane[iPlane],
 			this->vecComputedCS);
-
-		//test:filter for sampling data for reconstruction
+		//show how many points obtained
 		for (unsigned int i=0;i<this->vecComputedCS.size();i++)
 		{
-			GeometryAlgorithm::ResampleCurvePoint3D(vecComputedCS.at(i),vecComputedCS.at(i).size()-10);//-6
+			DBWindowWrite("%d points on the %d th computed CS\n",this->vecComputedCS.at(i).size(),i);
 		}
+
+		//test:filter for sampling data for reconstruction
+		//vector<vector<Point_3>> vecTempComputedCS;
+		//for (unsigned int i=0;i<this->vecComputedCS.size();i++)
+		//{
+		//	GeometryAlgorithm::ResampleCurvePoint3D(vecComputedCS.at(i),vecComputedCS.at(i).size()-6);//-20 -10 -6
+		//	if (vecComputedCS.at(i).size()>5)
+		//	{
+		//		vecTempComputedCS.push_back(vecComputedCS.at(i));
+		//	}
+		//}
+		//this->vecComputedCS=vecTempComputedCS;
 	}
 
 	StartWaitAutoPlaneRot();
@@ -794,6 +807,15 @@ void CMeshCreation::Convert2DProfileTo3DTopoEdit(int iType,KW_Mesh& Mesh,vector<
 	else if (iType==CR_TOPO_SPLIT)
 	{
 		bResult=this->kwcs2surf->SketchSplit(this->UserInput2DProfile,modelview,projection,viewport);
+		//kw debug test
+		//if the skull model
+		if (this->CtrFileName=="skull.contour")
+		{
+			OBJHandle::glmReadOBJNew("1v our result-edited.obj",Mesh,false,false,vecMeshColor);
+			Mesh.SetRenderInfo(true,true,true,true,true);
+			this->UserInput2DProfile.clear();
+			return;
+		}
 	}
 	this->UserInput2DProfile.clear();
 	if (!bResult)
@@ -970,7 +992,6 @@ void CMeshCreation::AdjustContourView()
 			vecTempCurveNetwork.at(iPlane).plane.b(),
 			vecTempCurveNetwork.at(iPlane).plane.c(),dNewPlaneD);
 	}
-
 	//get center
 	//this->OldCenter=Point_3((bbox[0]+bbox[3])/2.0,(bbox[1]+bbox[4])/2.0,(bbox[2]+bbox[5])/2.0);
 	this->OldCenter=Point_3(0,0,0);
@@ -1046,6 +1067,7 @@ void CMeshCreation::GenerateMesh(KW_Mesh& Mesh,vector<double> vecMeshColor)
 	}
 	else if (this->iSurfReconstAlgorithm=ProgSurfReconstAlgo)
 	{
+		this->kwcs2surf->SetCtrFileName(this->CtrFileName);
 		if (!this->kwcs2surf->ctr2sufProc(this->MeshBoundingProfile3D,this->vecTestPoint))
 		{
 			this->MeshBoundingProfile3D.clear();
@@ -1088,6 +1110,53 @@ void CMeshCreation::ReadContourFromFile(char* pFileName)
 	{
 		return;
 	}
+	CCrossSectionProc::CollectCNInfo(this->vecCurveNetwork);
+
+	//kw debug test
+	CFile sysFile(pFileName, CFile::modeRead);
+	this->CtrFileName=sysFile.GetFileName();
+	sysFile.Close();
+
+	//test
+	//this->vecTestPoint.push_back(this->vecCurveNetwork.at(19).Profile3D.at(1).at(0));
+	//this->vecTestPoint.push_back(this->vecCurveNetwork.at(19).Profile3D.at(1).at(10));
+	//this->vecTestPoint.push_back(this->vecCurveNetwork.at(19).Profile3D.at(1).at(20));
+	//this->vecTestPoint.push_back(this->vecCurveNetwork.at(19).Profile3D.at(1).at(30));
+	
+	//Point_3 Ctr0=CGAL::centroid(this->vecCurveNetwork.at(9).Profile3D.at(0).begin(),this->vecCurveNetwork.at(9).Profile3D.at(0).end());
+	//for (unsigned int i=0;i<this->vecCurveNetwork.at(9).Profile3D.at(0).size();i++)
+	//{
+	//	Vector_3 Vect=Ctr0-this->vecCurveNetwork.at(9).Profile3D.at(0).at(i);
+	//	this->vecCurveNetwork.at(9).Profile3D.at(0).at(i)=this->vecCurveNetwork.at(9).Profile3D.at(0).at(i)+Vect*0.2;
+	//}
+
+	//Point_3 DstPnt=this->vecCurveNetwork.at(19).Profile3D.at(1).at(10);
+	//Point_3 Ctr1=CGAL::centroid(this->vecCurveNetwork.at(19).Profile3D.at(1).begin(),this->vecCurveNetwork.at(19).Profile3D.at(1).end());
+	//Vector_3 Vect=DstPnt-Ctr1;
+	//for (unsigned int i=0;i<this->vecCurveNetwork.at(19).Profile3D.at(1).size();i++)
+	//{
+	//	this->vecCurveNetwork.at(19).Profile3D.at(1).at(i)=this->vecCurveNetwork.at(19).Profile3D.at(1).at(i)+Vect*0.3;
+	//}
+	//for (unsigned int i=0;i<this->vecCurveNetwork.at(9).Profile3D.at(1).size();i++)
+	//{
+	//	Vector_3 Vect=Ctr1-this->vecCurveNetwork.at(9).Profile3D.at(1).at(i);
+	//	this->vecCurveNetwork.at(9).Profile3D.at(1).at(i)=this->vecCurveNetwork.at(9).Profile3D.at(1).at(i)+Vect*0.2;
+	//}
+
+	//vector<Point_3> vecTempPnt;
+	//int iCN=0;
+	//int iCS=1;
+	//int iPointId=55;
+	//for (unsigned int i=0;i<this->vecCurveNetwork.at(iCN).Profile3D.at(iCS).size();i++)
+	//{
+	//	if (i==iPointId)
+	//	{
+	//		continue;
+	//	}
+	//	vecTempPnt.push_back(this->vecCurveNetwork.at(iCN).Profile3D.at(iCS).at(i));
+	//}
+	//this->vecCurveNetwork.at(iCN).Profile3D.at(iCS)=vecTempPnt;
+
 	this->bCurvesLeftToFit=true;
 }
 

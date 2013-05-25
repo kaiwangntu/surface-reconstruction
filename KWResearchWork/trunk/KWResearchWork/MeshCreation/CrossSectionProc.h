@@ -69,6 +69,8 @@ public:
 	//nothing saved in Ctr2SufManager
 	static bool ExportCrossSections(char* fnames,vector<CurveNetwork> vecCurveNetwork);
 
+	//collect input curve network information (No. curves & No. points) and print out
+	static void CollectCNInfo(vector<CurveNetwork> vecCurveNetwork);
 };
 
 #endif

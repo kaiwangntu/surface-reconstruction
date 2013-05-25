@@ -9,6 +9,12 @@
 
 void KW_CS2Surf::GenInitMesh()
 {
+	//test
+	clock_t   start   =   clock();   
+
+	//#pragma omp parallel 
+	//{
+
 	for (int i=0;i<this->iSSspacenum;i++)
 	{
 		//if empty subspace(combined into other subspaces),do not calculate
@@ -48,6 +54,12 @@ void KW_CS2Surf::GenInitMesh()
 		//}
 	}
 
+	//}
+
+	//test
+	clock_t   endt   =   clock();
+	DBWindowWrite("union finished,taking: %d ms\n",endt - start);
+
 	//test
 #ifdef KW_TEST
 	return;
@@ -61,7 +73,7 @@ bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<
 {
 	//test
 #ifdef KW_TEST
-	if (iSubSpaceId!=22)
+	if (iSubSpaceId!=1)
 	{
 		return false;
 	}
@@ -73,6 +85,32 @@ bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<
 	vector<vector<Triangle_3>> vecSSFaceTri,vecShrinkSSFaceTri;
 	ShrinkCollectSSInfo(this->vecSSMesh.at(iSubSpaceId),vecSSFaceTri,vecShrinkSSFaceTri);
 
+	//if num of faces containing pof ==1, then limit the length of the non-intersected cylinder
+	//(faces on the same plane are considered as one)
+	//such that the cylinder won't be too long and the result after smoothing is acceptable
+	bool bIsolatedCylin=false;
+	set<int> setPlnId;
+	for (int i=0;i<this->vecSSspacefacenum.at(iSubSpaceId);i++)
+	{
+		//collect the POF on each face,calculate and fill in the PolyhedronFromPOF info for it
+		int iFaceId=this->vecvecSSspace.at(iSubSpaceId).at(i);
+		//if the face is on the bounding box or has been removed during subspace combination, don't calculate
+		if (this->vecResortFace.at(iFaceId).bBoundaryFace
+			|| this->vecResortFace.at(iFaceId).vecFaceVertex.empty())
+		{
+			continue;
+		}
+		//if no POF,continue
+		if (this->vecPOF.at(iFaceId).PwhList3D.empty())
+		{
+			continue;
+		}
+		setPlnId.insert(this->vecResortFace.at(iFaceId).iFacePlaneID);
+	}
+	if (setPlnId.size()==1)
+	{
+		bIsolatedCylin=true;
+	}
 
 	//polygons who have edges on the bounding edges of the face
 	//first: index of face in the subspace
@@ -91,7 +129,7 @@ bool KW_CS2Surf::GenSubMesh(int iSubSpaceId,vector<Point_3>& vecSubPoint,vector<
 		PolyhedronFromPOF currentPFPOF;
 		currentPFPOF.iFaceID=iFaceId;
 		vector<Point_3> vecFacePoint;
-		POFToPFPOF(iFaceId,iSubSpaceId,vecSSFaceTri,vecShrinkSSFaceTri,currentPFPOF,vecFacePoint);
+		POFToPFPOF(iFaceId,iSubSpaceId,vecSSFaceTri,vecShrinkSSFaceTri,bIsolatedCylin,currentPFPOF,vecFacePoint);
 		//do not record unless this face has curve on
 		if (!currentPFPOF.vecPwh3D.empty())
 		{
@@ -198,8 +236,8 @@ void KW_CS2Surf::ShrinkCollectSSInfo(KW_Mesh& SSInOut,vector<vector<Triangle_3>>
 	}
 }
 
-void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3>> vecSSFaceTri,
-							vector<vector<Triangle_3>> vecShrinkSSFaceTri, PolyhedronFromPOF& InOutPFPOF,vector<Point_3>& vecFacePoint)
+void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri,
+							bool bIsolatedCylin, PolyhedronFromPOF& InOutPFPOF,vector<Point_3>& vecFacePoint)
 {
 	ResortedFace currentFaceInfo=this->vecResortFace.at(iFaceId);
 	//decide the height vector pointing to the inside of the subspace
@@ -213,7 +251,7 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 		HeightVec=currentFaceInfo.vecHeightVect.back();
 	}
 	//collect the polyhedrons
-	//quite time-consuming when terminating the program
+	//quite time-consuming when terminating the program in debug mode
 	Pwh_list_2::iterator PwhList2Iter=this->vecPOF.at(iFaceId).PwhList2D.begin();
 	for (Pwh_list_3::iterator PwhList3Iter=this->vecPOF.at(iFaceId).PwhList3D.begin();
 		PwhList3Iter!=this->vecPOF.at(iFaceId).PwhList3D.end();PwhList3Iter++,PwhList2Iter++)
@@ -254,7 +292,7 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 		//PerturbOneOutBound(currentFaceInfo,currentPwh3,HeightVec,PertOutBnd,iSubSpaceId);
 		Polygon_with_holes_3 OutBnd;
 		Point_3 ExtruCenter;
-		bool bPert=GetOutBound(iSubSpaceId,currentFaceInfo,iFaceId,vecSSFaceTri,vecShrinkSSFaceTri,currentPwh3,HeightVec,OutBnd,ExtruCenter);
+		bool bPert=GetOutBound(iSubSpaceId,currentFaceInfo,iFaceId,vecSSFaceTri,vecShrinkSSFaceTri,bIsolatedCylin,currentPwh3,HeightVec,OutBnd,ExtruCenter);
 
 		//test
 #ifdef KW_TEST
@@ -279,7 +317,7 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 			GeometryAlgorithm::PlanarPolygonToXOY(OutBnd.inner_hole.at(i),OutBnd2dInnerHole,plane);
 			OutBnd2d.add_hole(OutBnd2dInnerHole);
 		}
-		
+
 		//build cylinder
 		KW_Mesh OutPolyh;
 		GetOnePolyhFromPwh3(currentPwh3,currentPwh2,OutBnd,OutBnd2d,HeightVec,OutPolyh);
@@ -287,8 +325,6 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 		OutPolyh.SetReserved(iSubSpaceId);
 		//record the center of the extruded POF
 		OutPolyh.SetExtruCenter(ExtruCenter);
-
-
 		//record in InOutPFPOF
 		InOutPFPOF.vecPwh3D.push_back(currentPwh3);
 		//InOutPFPOF.vecPwh2D.push_back(currentPwh2);
@@ -301,11 +337,11 @@ void KW_CS2Surf::POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3
 }
 
 bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri, 
-							 Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter)
+							 bool bIsolatedCylin,Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter)
 {
 	//test
 #ifdef KW_TEST
-	//if (iFaceId!=26)
+	//if (iFaceId!=33)
 	//{
 	//	return false;
 	//}
@@ -318,6 +354,170 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 	Point_3 CSCenter=CGAL::centroid(Pwh3DIn.outer_boundary.begin(),Pwh3DIn.outer_boundary.end());
 	int iLenStep=10;//10;
 	int iScaleStep=10;//10;//5;
+
+	////////////kw debug test
+	if (this->CtrName=="teacup.contour")
+	{
+		//for teacup example
+		if (iSubSpaceId==1)
+		{
+			if (iFaceId==19)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.1;
+			}
+		}
+		else if (iSubSpaceId==3)
+		{
+			if (iFaceId==19)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+		}
+		else if (iSubSpaceId==14)
+		{
+			if (iFaceId==71)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.1;
+			}
+		}
+		else if (iSubSpaceId==15)
+		{
+			if (iFaceId==71)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+		}
+		else if (iSubSpaceId==26)
+		{
+			NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.1;
+		}
+	}
+	else if (this->CtrName=="BE.contour")
+	{
+		//only for B->E example
+		if (iSubSpaceId==0)
+		{
+			if (iFaceId==10)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+			else if (iFaceId==34)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.7;
+			}
+		}
+		else if (iSubSpaceId==1)
+		{
+			if (iFaceId==35)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.6;
+			}
+			else if (iFaceId==10)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.8;//0.3
+			}
+			else if (iFaceId==15)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=1.4;
+			}
+		}
+		else if (iSubSpaceId==3)
+		{
+			if (iFaceId==20)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+			else if (iFaceId==37)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.7;
+			}
+		}
+		else if (iSubSpaceId==4)
+		{
+			if (iFaceId==34)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.7;
+			}
+			else if (iFaceId==27)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+		}
+		else if (iSubSpaceId==5)
+		{
+			if (iFaceId==35)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.55;
+			}
+		}
+		else if (iSubSpaceId==7)
+		{
+			if (iFaceId==37)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.7;
+			}
+			else if (iFaceId==33)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+		}
+	}
+	else if (this->CtrName=="FP.contour")
+	{
+		//only for f->p example
+		if (iSubSpaceId==0)
+		{
+			if (iFaceId==10)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+			else if (iFaceId==34)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.7;
+			}
+		}
+		else if (iSubSpaceId==1)
+		{
+			if (iFaceId==35)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.6;//0.7
+			}
+			else if (iFaceId==15)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.8;
+			}
+			else 
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+		}
+		else if (iSubSpaceId==4)
+		{
+			if (iFaceId==34)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.7;
+			}
+			else if (iFaceId==27)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.3;
+			}
+		}
+		else if (iSubSpaceId==5)
+		{
+			if (iFaceId==35)
+			{
+				NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.5;//0.4
+			}
+		}
+		else if (iSubSpaceId==7 || iSubSpaceId==3)
+		{
+			NON_INTSC_POLY_EXTRU_HEIGHT_RATIO=0.8;//0.4
+		}
+	}
+	////////////kw debug test
+
+
+
 
 	if (Pwh3DIn.bIntersectSSFace)
 	{
@@ -352,6 +552,7 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 				} while(Hafc!=FaceIter->facet_begin());
 			}
 		}
+
 		//shrink the length of the cylinder
 		for (int iLengh=iLenStep;iLengh>0;iLengh--)
 		{
@@ -367,8 +568,10 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 			Polygon_with_holes_3 ExtrudePwh=Pwh3DIn;
 
 			//test
+#ifdef KW_TEST
 			//this->vecTestPoint=Pwh3DIn.outer_boundary;
 			//this->vecTestPoint.push_back(TransCenter);
+#endif
 
 			//set the flags for all points
 			for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
@@ -497,7 +700,14 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 								iCurrOutPointNum++;
 							}
 						}
-						if (iCurrOutPointNum>iLastOutPoinNum || iLastOutPoinNum==0)
+						//make sure the extruded center is strictly inside the subspace
+						Point_3 NewTransCenter=CGAL::centroid(ExtrudePwh.outer_boundary.begin(),ExtrudePwh.outer_boundary.end());
+						bool bCtrInSS=JudgePointInsideSSStrict(NewTransCenter,vecShrinkSSFaceTri);
+#ifdef KW_TEST
+//	this->vecTestPoint.push_back(NewTransCenter);
+#endif
+
+						if (iCurrOutPointNum>iLastOutPoinNum || iLastOutPoinNum==0 || !bCtrInSS)
 						{
 							ExtrudePwh.outer_boundary=vecLastPointPos;
 							ExtrudePwh.outer_bound_flag=vecLastInOutflag;
@@ -510,6 +720,10 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 							vecLastInOutflag=ExtrudePwh.outer_bound_flag;
 						}
 					}
+#ifdef KW_TEST
+	//this->vecTestPoint.insert(this->vecTestPoint.end(),ExtrudePwh.outer_boundary.begin(),ExtrudePwh.outer_boundary.end());
+	//this->vecTestPoint.push_back(CGAL::centroid(ExtrudePwh.outer_boundary.begin(),ExtrudePwh.outer_boundary.end()));
+#endif
 
 					//only scale points outside the ss
 					for (unsigned int i=0;i<ExtrudePwh.outer_boundary.size();i++)
@@ -533,6 +747,9 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 									ExtrudePwh.outer_bound_flag.at(i)=CGAL::ON_BOUNDED_SIDE;
 									break;
 								}
+#ifdef KW_TEST
+//	this->vecTestPoint.push_back(ScalePoint);
+#endif
 							}
 						}
 					}
@@ -587,11 +804,29 @@ bool KW_CS2Surf::GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,v
 	else
 	{
 		DBWindowWrite("Pwh does NOT intersect face...\n");
+		
+		//if isolated cylidners, then limit the length
+		if (bIsolatedCylin)
+		{
+			DBWindowWrite("isolated cylinder...\n");
+			HeightVec=HeightVec/sqrt(HeightVec.squared_length());
+			HeightVec=HeightVec*600;
+		}
+
+#ifdef KW_TEST
+//		this->vecTestPoint.push_back(CSCenter);
+#endif
+
 		//shrink the length of the cylinder
 		for (int iLengh=iLenStep;iLengh>0;iLengh--)
 		{
 			//if the center of the extruded pwh is outside the ss,then shrink the length without scaling
 			Point_3 TransCenter=CSCenter+HeightVec*NON_INTSC_POLY_EXTRU_HEIGHT_RATIO*(double)iLengh/(double)iLenStep;
+
+#ifdef KW_TEST
+//			this->vecTestPoint.push_back(TransCenter);
+#endif
+
 			//if (!JudgePointInsideSS(TransCenter,vecShrinkSSFaceTri))
 			if (!JudgePointInsideSSStrict(TransCenter,vecShrinkSSFaceTri))
 			{
@@ -1043,7 +1278,6 @@ void KW_CS2Surf::GetOnePolyhFromPwh3(Polygon_with_holes_3 CSPwh3,Polygon_with_ho
 	BuildTopBotFaces(CSPwh2,vecBotTri);
 	//test
 	BuildTopBotFaces(ExtruPwh2,vecTopTri,false);
-	
 
 	//convert to KW_MESH
 	vector<Point_3> vecTotalPoint=vecOldPoint;
@@ -1430,6 +1664,7 @@ void KW_CS2Surf::ComputeUnionInSubspace(vector<KW_Mesh> vecSinglePoly,KW_Mesh& R
 		CarvePoly* pCarveNew=new CarvePoly(vecCarveFaceNew,vecCarveVerNew);
 
 		////test
+#ifdef KW_TEST
 		std::ofstream outfFinal;
 		outfFinal.open("0.obj");
 		writeOBJ(outfFinal, pCarveFinal);//std::cout
@@ -1440,6 +1675,7 @@ void KW_CS2Surf::ComputeUnionInSubspace(vector<KW_Mesh> vecSinglePoly,KW_Mesh& R
 		outfNew.open("1.obj");
 		writeOBJ(outfNew, pCarveNew);//std::cout
 		outfNew.close();
+#endif
 
 		try 
 		{
@@ -1454,10 +1690,12 @@ void KW_CS2Surf::ComputeUnionInSubspace(vector<KW_Mesh> vecSinglePoly,KW_Mesh& R
 		DBWindowWrite("used carve csg union, time: %d ms\n",end-start);
 
 		////test
+#ifdef KW_TEST
 		std::ofstream outfResult;
 		outfResult.open("result.obj");
 		writeOBJ(outfResult, pCarveFinal);//std::cout
 		outfResult.close();
+#endif
 
 		delete pCarveNew;pCarveNew=NULL;
 	}
@@ -2030,6 +2268,7 @@ void KW_CS2Surf::StitchMesh(vector<vector<Point_3>> vecvecSubPoint, vector<vecto
 		vecFilledFace.push_back(HhToNewFace->facet());
 		OutPolyh.normalize_border();
 	}
+
 	//split filled polygons into triangles
 	for (unsigned int i=0;i<vecFilledFace.size();i++)
 	{
@@ -2046,9 +2285,9 @@ void KW_CS2Surf::StitchMesh(vector<vector<Point_3>> vecvecSubPoint, vector<vecto
 			Hafc++;
 		} while(Hafc!=vecFilledFace.at(i)->facet_begin());
 		Point_3 Centroid=CGAL::centroid(vecFacePoint.begin(),vecFacePoint.end());
-		OutPolyh.create_center_vertex(Hafc);
+		Halfedge_handle HhNew=OutPolyh.create_center_vertex(Hafc);
+		HhNew->vertex()->point()=Centroid;
 	}
-
 	//test
 	//for (unsigned int i=0;i<this->vecTempCN.size();i++)
 	//{

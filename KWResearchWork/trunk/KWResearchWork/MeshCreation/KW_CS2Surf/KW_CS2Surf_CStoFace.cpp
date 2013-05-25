@@ -72,7 +72,8 @@ void KW_CS2Surf::SubtractInnerHole(CurveNetwork InputCN,Pwh_list_2& CSSubtractRe
 		Pwh_list_2 currSubResult;
 		currSubResult.push_back(currOutCS);
 		//check all the inner holes inside this outer profile
-		for (unsigned int j=i+1;j<InputCN.CurveInOut.size();j++)
+		for (unsigned int j=0;j<InputCN.CurveInOut.size();j++)//the hole index may be ahead of the outter boundary index
+		//for (unsigned int j=i+1;j<InputCN.CurveInOut.size();j++)
 		{
 			if (InputCN.CurveInOut.at(j)!=i)//this hole is NOT inside the outer of hole/circle
 			{
@@ -209,7 +210,7 @@ void KW_CS2Surf::Polygon2Dto3D(CurveNetwork InputCN,Pwh_list_2 PwhResult2D,list<
 			vector<Point_3> InnerPoly3D;
 			Polygon_2 InnerPoly2D=*HoleIter;
 			//test
-			GeometryAlgorithm::PrintCGALPolygon_2toFile("inhole.txt",InnerPoly2D);
+			//GeometryAlgorithm::PrintCGALPolygon_2toFile("inhole.txt",InnerPoly2D);
 			//convert and save
 			GeometryAlgorithm::XOYPolygonTo3DPlanar(InnerPoly2D,InnerPoly3D,InputCN.plane);
 			vecInnerPoly3D.push_back(InnerPoly3D);
@@ -297,6 +298,49 @@ void KW_CS2Surf::AlignPOFData(CurveNetwork InCN,vector<Point_3> InFace,PolygonOn
 			//	PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
 			////test
 			//fprintf(pFileA,"%f %f %f\n",PwhListIter->outer_boundary.at(j).x(),PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
+		}
+
+		for (unsigned int i=0;i<PwhListIter->inner_hole.size();i++)
+		{
+			for (unsigned int j=0;j<PwhListIter->inner_hole.at(i).size();j++)
+			{
+				double dMinDist=99999999;
+				Point_3 NearestPoint;
+				for (unsigned int k=0;k<vecCNPoint.size();k++)
+				{
+					double dDist=CGAL::squared_distance(PwhListIter->inner_hole.at(i).at(j),vecCNPoint.at(k));
+					if (dDist<dMinDist)
+					{
+						dMinDist=dDist;
+						NearestPoint=vecCNPoint.at(k);
+					}
+				}
+				//continue search for the nearst point in CN points
+				for (unsigned int k=0;k<InFace.size();k++)
+				{
+					double dDist=CGAL::squared_distance(PwhListIter->inner_hole.at(i).at(j),InFace.at(k));
+					if (dDist<dMinDist)
+					{
+						dMinDist=dDist;
+						NearestPoint=InFace.at(k);
+					}
+				}
+				//if the intersection between CNs is calculated right,every point in InOutPOF should 
+				//come from vecCNPoint & InFace
+				//if (dDist<2)
+				//DBWindowWrite("aligned one point in POF,dist: %f\n",dMinDist);
+				//DBWindowWrite("Ori point pos: %f %f %f\n",PwhListIter->outer_boundary.at(j).x(),
+				//	PwhListIter->outer_boundary.at(j).y(),PwhListIter->outer_boundary.at(j).z());
+				if (dMinDist>15)//6
+				{
+					DBWindowWrite("corres. point failed to find when in align POF,dist: %f\n",dMinDist);
+				}
+				else
+				{
+					//DBWindowWrite("aligned one point in POF,dist: %f\n",dMinDist);
+					PwhListIter->inner_hole.at(i).at(j)=NearestPoint;
+				}
+			}
 		}
 	}	
 	////test

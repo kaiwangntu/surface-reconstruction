@@ -22,6 +22,7 @@ KW_CS2Surf::KW_CS2Surf(void)
 	this->iRenderUnionPoly=CR_RENDER_NONE_UNION_CYLINDER;
 	this->vecTestTri.clear();
 	clearStlSubspaceInfo();
+	this->CtrName.Empty();
 }
 
 KW_CS2Surf::~KW_CS2Surf(void)
@@ -40,6 +41,7 @@ KW_CS2Surf::~KW_CS2Surf(void)
 	this->vecSubSurfSSId.clear();
 	this->vecTestTri.clear();
 	clearStlSubspaceInfo();
+	this->CtrName.Empty();
 }
 
 void KW_CS2Surf::Reset()
@@ -48,7 +50,7 @@ void KW_CS2Surf::Reset()
 
 bool KW_CS2Surf::ctr2sufProc(vector<vector<Point_3> >& MeshBoundingProfile3D,vector<Point_3>& vecTestPoint)
 {
-	clock_t   start   =   clock();   
+	//clock_t   start   =   clock();   
 	DBWindowWrite( "Reconstruction begins...\n");
 
 	//preprocess data first
@@ -67,11 +69,12 @@ bool KW_CS2Surf::ctr2sufProc(vector<vector<Point_3> >& MeshBoundingProfile3D,vec
 	//test
 	//return false;
 
-
 	PutCNtoFace();
 
 	//test
 	//return false;
+
+	clock_t   start   =   clock();   
 
 	CombineSS();
 
@@ -80,12 +83,14 @@ bool KW_CS2Surf::ctr2sufProc(vector<vector<Point_3> >& MeshBoundingProfile3D,vec
 
 	GenInitMesh();
 
+	clock_t   endt   =   clock();
+
 	//test
 	//return false;
 
  	PostProcMesh();
 
-	clock_t   endt   =   clock();
+	//clock_t   endt   =   clock();
 	DBWindowWrite("Reconstruction finished,taking: %d ms\n",endt - start);
 
 	return true;

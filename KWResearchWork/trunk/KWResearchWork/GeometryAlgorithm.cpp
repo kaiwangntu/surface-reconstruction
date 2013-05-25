@@ -2528,7 +2528,9 @@ int GeometryAlgorithm::GetMeshPlaneIntersection(KW_Mesh mesh,Plane_3 plane,vecto
 
 	//DBWindowWrite("intersect facet num: %d\n",vecIntersectFacet.size());
 
-	while (!vecIntersectFacet.empty())
+	bool bBorderHh=false;
+
+	while (!vecIntersectFacet.empty() && !bBorderHh)
 	{
 		Facet_handle FhFirst=vecIntersectFacet.front();
 		//vecIntersectFacet.erase(vecIntersectFacet.begin());
@@ -2634,6 +2636,11 @@ int GeometryAlgorithm::GetMeshPlaneIntersection(KW_Mesh mesh,Plane_3 plane,vecto
 				}
 				Hafc++;
 			} while( Hafc!= FhCurrent->facet_begin());
+			if (Hafc->is_border() || Hafc->opposite()->is_border())
+			{
+				bBorderHh=true;
+				break;
+			}
 			//DBWindowWrite("intersect facet num: %d\n",vecIntersectFacet.size());
 		}while (FhCurrent!=FhFirst);
 

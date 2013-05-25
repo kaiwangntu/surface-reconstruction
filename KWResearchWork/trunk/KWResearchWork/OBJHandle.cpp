@@ -531,6 +531,12 @@ GLvoid OBJHandle::glmReadOBJNew(char* filename,KW_Mesh& mesh,bool bScale,bool bC
 
 	ConvertToCGALPolyhedronNew(model,mesh);
 
+	//normalize border edges if exist
+	if (!mesh.empty())
+	{
+		mesh.normalize_border();
+	}
+	
 	UnitizeCGALPolyhedron(mesh,bScale,bCenter);
 	//UnitizeCGALPolyhedron(mesh,false,false);
 	GeometryAlgorithm::SetUniformMeshColor(mesh,vecDefaultColor);
@@ -542,6 +548,11 @@ GLvoid OBJHandle::glmReadOBJNew(char* filename,KW_Mesh& mesh,bool bScale,bool bC
 	}
 
 	DBWindowWrite("mesh loaded...\n");
+
+	DBWindowWrite("num of vertices: %d\n",mesh.size_of_vertices());
+	DBWindowWrite("num of facets: %d\n",mesh.size_of_facets());
+	DBWindowWrite("num of halfedges: %d\n",mesh.size_of_halfedges());
+	DBWindowWrite("num of border edges: %d\n",mesh.size_of_border_edges());
 }
 
 /* glmWriteOBJ: Writes a model description in Wavefront .OBJ format to

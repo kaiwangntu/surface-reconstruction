@@ -105,6 +105,9 @@ private:
 
 	KW_CS2Surf* kwcs2surf;
 
+	//kw debug test
+	CString CtrFileName;
+
 
 	//plane0: xoy plane1:xoz plane2:yoz
 	Plane_3 RefPlane[3];

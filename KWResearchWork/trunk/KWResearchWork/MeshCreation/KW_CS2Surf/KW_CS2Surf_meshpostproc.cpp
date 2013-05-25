@@ -33,21 +33,20 @@ bool KW_CS2Surf::GetConstraintEdges(vector<Halfedge_handle>& vecConstrEdge,set<V
 		{
 			vector<Point_3> currentCS=currentCN.Profile3D.at(j);
 			//find the first point of currentCS in Polyhedron
-			bool bFoundFirstPoint=false;
+			double dMinDist=9999999;
 			Vertex_iterator hFirstVer;
 			for (Vertex_iterator VerIter=this->InitPolyh.vertices_begin();VerIter!=this->InitPolyh.vertices_end();VerIter++)
 			{
 				double dDist=CGAL::squared_distance(VerIter->point(),currentCS.front());
-				if (dDist<0.0001)//1
+				if (dDist<dMinDist)
 				{
+					dMinDist=dDist;
 					hFirstVer=VerIter;
-					bFoundFirstPoint=true;
-					break;
 				}
 			}
-			if (!bFoundFirstPoint)
+			if (dMinDist>5)//0.0001
 			{
-				DBWindowWrite("cannot find first point on CS\n");
+				DBWindowWrite("CN %d CS %d,cannot find first point on CS, min dist: %f\n",i,j,dMinDist);
 				break;
 			}
 			//save first constraint vertex
@@ -59,27 +58,40 @@ bool KW_CS2Surf::GetConstraintEdges(vector<Halfedge_handle>& vecConstrEdge,set<V
 				Point_3 NextPoint=currentCS.at((k+1)%currentCS.size());
 				Halfedge_around_vertex_circulator Havc=hFirstVer->vertex_begin();
 				double dMinDist=9999999;
+				
+				//test
+				vector<Point_3> vecNbTestPnt;
+				vecNbTestPnt.push_back(hFirstVer->point());
+
+
+				Halfedge_handle HhPointToNextVer;
 				do 
 				{
-					Halfedge_handle HhPointToNextVer=Havc->opposite();
-					double dDist=CGAL::squared_distance(HhPointToNextVer->vertex()->point(),NextPoint);
+					Halfedge_handle HhTemp=Havc->opposite();
+					double dDist=CGAL::squared_distance(HhTemp->vertex()->point(),NextPoint);
+					
+					//test
+					vecNbTestPnt.push_back(HhTemp->vertex()->point());
+
 					//if (HhPointToNextVer->vertex()->point()==NextPoint)
-					if (dDist<0.0001)//1
+					if (dDist<dMinDist)
 					{
-						vecCurrentHh.push_back(HhPointToNextVer);
-						hFirstVer=HhPointToNextVer->vertex();
-						setConstrVertex.insert(hFirstVer);
-						dMinDist=dDist;
-						break;
-					}
-					else if (dDist<dMinDist)
-					{
+						HhPointToNextVer=HhTemp;
 						dMinDist=dDist;
 					}
 					Havc++;
 				} while(Havc!=hFirstVer->vertex_begin());
-				if (dMinDist>=1)
+
+				if (dMinDist<5)
 				{
+					vecCurrentHh.push_back(HhPointToNextVer);
+					hFirstVer=HhPointToNextVer->vertex();
+					setConstrVertex.insert(hFirstVer);
+				}
+				else
+				{
+					//this->vecTestPoint.insert(this->vecTestPoint.end(),vecNbTestPnt.begin(),vecNbTestPnt.end());
+
 					//record the facets around this vertex
 					//do 
 					//{
@@ -124,7 +136,7 @@ bool KW_CS2Surf::GetConstraintEdges(vector<Halfedge_handle>& vecConstrEdge,set<V
 					//		break;
 					//	}
 					//}
-					DBWindowWrite("distance between two points>1: %f\n",dMinDist);
+					DBWindowWrite("CN %d CS %d Point %d,distance between two points>1: %f\n",i,j,k,dMinDist);
 					break;
 				}
 			}
