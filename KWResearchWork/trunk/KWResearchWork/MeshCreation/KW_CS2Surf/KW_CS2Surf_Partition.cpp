@@ -807,6 +807,9 @@ void KW_CS2Surf::GetSSMesh()
 	//to the id within each subspace mesh
 	//all the vertices are collected from the faces, so isolated vertices caused by the 
 	//subspace combination will not be taken account into consideration
+
+	//subspace number after combination
+	int iSSNumAfterComb=0;
 	for (unsigned int i=0;i<vecTotalFaceVer.size();i++)
 	{
 		set<int> setSSVer;
@@ -882,6 +885,7 @@ void KW_CS2Surf::GetSSMesh()
 		//save the subspace mesh
 		if (!currSSMesh.empty())
 		{
+			iSSNumAfterComb++;
 			OBJHandle::UnitizeCGALPolyhedron(currSSMesh,false,false);
 		}
 		this->vecSSMesh.push_back(currSSMesh);
@@ -892,4 +896,6 @@ void KW_CS2Surf::GetSSMesh()
 		//	this->vecSinglePoly.push_back(currSSMesh);
 		//}
 	}
+	DBWindowWrite("initial subzone no.: %d\n",this->iSSspacenum);
+	DBWindowWrite("subzone no. after combination: %d\n",iSSNumAfterComb);
 }

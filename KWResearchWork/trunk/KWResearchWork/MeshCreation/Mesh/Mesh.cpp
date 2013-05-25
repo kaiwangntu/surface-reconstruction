@@ -2153,6 +2153,7 @@ void Mesh::splitsmooth(float alpha0, float alphan, int times, int stimes)
 }
 void Mesh::splitsmooth2(float alpha0, float alphan, int times, int stimes, float ratio)
 {
+	clock_t   start   =   clock();   
 	cout<<"in splitsmooth2! Great!"<<"alpha0"<<alpha0<<"alphan"<<alphan<<"times"<<times<<"stimes"<<stimes<<"ratio"<<ratio<<endl;
 	float delta = (alphan - alpha0)/times;
 	float alpha = alpha0;
@@ -2166,6 +2167,8 @@ void Mesh::splitsmooth2(float alpha0, float alphan, int times, int stimes, float
 		//JUFair( ratio, times);//times
 		alpha += delta;
 	}
+	clock_t   endt   =   clock();
+	DBWindowWrite("Mesh improvement finished,taking: %d ms\n",endt - start);
 }
 
 void Mesh::splitsmooth3(float alpha0, float alphan, int times, int stimes, float ratio)

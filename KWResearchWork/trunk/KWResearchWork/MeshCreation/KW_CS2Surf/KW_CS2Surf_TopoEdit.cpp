@@ -50,6 +50,14 @@ bool KW_CS2Surf::SketchSplit(vector<CPoint> UserScrPoint,GLdouble* modelview,GLd
 			break;
 		}
 	}
+	
+	//kw debug test
+	if (this->CtrName=="skull.contour")
+	{
+		return true;
+	}
+
+
 	//remove face points
 	vector<int>::iterator IntIter=find(this->vecSubSurfSSId.begin(),this->vecSubSurfSSId.end(),iSSId);
 	assert(IntIter!=this->vecSubSurfSSId.end());

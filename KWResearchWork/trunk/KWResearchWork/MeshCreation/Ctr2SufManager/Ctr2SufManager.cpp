@@ -33,7 +33,7 @@ Ctr2SufManager::Ctr2SufManager()
 //	enlargeratio[ 0 ] = 1.2;
 //	enlargeratio[ 1 ] = 1.2;
 //	enlargeratio[ 2 ] = 100;
-	enlargeratio[ 0 ] = enlargeratio[ 1 ] = enlargeratio[ 2 ] = 2;//2;//2;
+	enlargeratio[ 0 ] = enlargeratio[ 1 ] = enlargeratio[ 2 ] = 2;//2;
 	ssver = NULL;
 	ssedge = ssface_planeindex = ssfaceedgenum = ssspacefacenum = NULL;
 	ssface = ssspace = ssspace_planeside = NULL;

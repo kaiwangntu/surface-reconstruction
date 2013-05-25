@@ -48,8 +48,14 @@ public:
 	//sketch to join the originally irrelevant components (cylinders)
 	bool SketchJoin(vector<CPoint> UserScrPoint,GLdouble* modelview,GLdouble* projection,GLint* viewport);
 
+	//set contour name
+	void SetCtrFileName(CString CSIn) {this->CtrName=CSIn;}	
+
 private:
 	
+	//kw debug test
+	CString CtrName;
+
 	//test points
 	vector<Point_3> vecTestPoint;
 	vector<Segment_3> vecTestSeg;
@@ -180,7 +186,7 @@ private:
 	//generate polyhedrons from POF
 	//IntersectPwh: polygons on the current face who have intersections with the bounding edges of the face
 	//setFacePoint: all the points on the bounding faces of the subspace
-	void POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri,
+	void POFToPFPOF(int iFaceId,int iSubSpaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri,bool bIsolatedCylin,
 		PolyhedronFromPOF& InOutPFPOF,vector<Point_3>& vecFacePoint);
 
 	//collect the subspace info,to judge if the cylinder is totally inside the subspace and its shrinked version
@@ -191,7 +197,7 @@ private:
 	//Pwh3DOut: corresponding extruded CS point positions
 	//ExtruCenter: center of Pwh3DOut 
 	bool GetOutBound(int iSubSpaceId,ResortedFace FaceInfo,int iFaceId,vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri,
-		Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter);
+		bool bIsolatedCylin,Polygon_with_holes_3 Pwh3DIn,Vector_3 HeightVec,Polygon_with_holes_3& Pwh3DOut,Point_3& ExtruCenter);
 	//check the intersection between the extruded cylinder and subspace
 	bool CheckCylinderInsideSS(vector<vector<Triangle_3>> vecSSFaceTri,vector<vector<Triangle_3>> vecShrinkSSFaceTri,Polygon_with_holes_3& PwhExtru);
 	//judge if a point is inside a subspace in mesh creation algorithm 

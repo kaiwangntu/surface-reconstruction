@@ -899,6 +899,7 @@ void Ctr2SufManager::ctr2sufProc(vector<vector<Point_3> >& MeshBoundingProfile3D
 
 	clock_t   endt   =   clock();
 	cout<<"time difference is:"<<endt - start<<endl;
+	DBWindowWrite("Reconstruction finished,taking: %d ms\n",endt - start);
 //	struct __timeb64 timebuffer;
 //	char *timeline;
 	_ftime64( &timebuffer );

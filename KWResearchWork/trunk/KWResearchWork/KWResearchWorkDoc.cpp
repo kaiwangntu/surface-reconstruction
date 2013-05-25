@@ -625,13 +625,16 @@ void CKWResearchWorkDoc::OnSketchMode()
 void CKWResearchWorkDoc::OnHelpTest()
 {
 	// TODO: Add your command handler code here
-	Point_3 Pnt0(3999,1924,-2024);
-	Point_3 Pnt1(703,222,-1092);
-	Point_3 Pnt2(-533,1360,2564);
-	Triangle_3 Tri(Pnt0,Pnt1,Pnt2);
-	Plane_3 Pln0=Tri.supporting_plane();
-	DBWindowWrite("%f %f %f %f\n",Pln0.a(),Pln0.b(),Pln0.c(),Pln0.d());
+	vector<Point_3> SamplePoints;
+	GeometryAlgorithm::SampleCircle(Point_3(-1.3,0,0),0.2,10,SamplePoints);
+	FILE* pfile=fopen("circle0.contour","w");
+	for (unsigned int i=0;i<SamplePoints.size();i++)
+	{
+		fprintf(pfile,"%.3f %.3f %.3f\n",SamplePoints.at(i).x(),SamplePoints.at(i).y(),SamplePoints.at(i).z());
+	}
+	fclose(pfile);
 
+	return;
 
 	vector<int> vecInitNum;
 	vecInitNum.push_back(1);
@@ -647,18 +650,6 @@ void CKWResearchWorkDoc::OnHelpTest()
 		pair<set<int>::iterator, bool> pairResult;
 		pairResult=setNum.insert(vecInitNum.at(i));
 	}
-
-
-
-	vector<Point_3> SamplePoints;
-	GeometryAlgorithm::SampleCircle(Point_3(0,0,0),0.3,20,SamplePoints);
-	FILE* pfile=fopen("circle0.contour","w");
-	for (unsigned int i=0;i<SamplePoints.size();i++)
-	{
-		fprintf(pfile,"%.3f %.3f %.3f\n",SamplePoints.at(i).x(),SamplePoints.at(i).y(),SamplePoints.at(i).z());
-	}
-	fclose(pfile);
-
 
 
 

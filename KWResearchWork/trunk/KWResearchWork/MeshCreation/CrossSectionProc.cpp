@@ -1377,7 +1377,10 @@ bool CCrossSectionProc::ExportCrossSections(char* fnames,vector<CurveNetwork> ve
 		{
 			for (unsigned int iPoint=0;iPoint<vecCurveNetwork.at(iCN).Profile3D.at(iCurve).size();iPoint++)
 			{
-				fprintf(pFile,"%.4f %.4f %.4f\n",vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).x(),
+				//fprintf(pFile,"%.4f %.4f %.4f\n",vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).x(),
+				//	vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).y(),
+				//	vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).z());
+				fprintf(pFile,"%.6f %.6f %.6f\n",vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).x(),
 					vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).y(),
 					vecCurveNetwork.at(iCN).Profile3D.at(iCurve).at(iPoint).z());
 			}
@@ -1448,4 +1451,21 @@ bool CCrossSectionProc::ExportCrossSections(char* fnames,vector<CurveNetwork> ve
 	}
 	fclose(pPartFile);
 	return true;
+}
+
+void CCrossSectionProc::CollectCNInfo(vector<CurveNetwork> vecCurveNetwork)
+{
+	int iCurveNum=0;
+	int iPointNum=0;
+
+	for (unsigned int i=0;i<vecCurveNetwork.size();i++)
+	{
+		for (unsigned int j=0;j<vecCurveNetwork.at(i).Profile3D.size();j++)
+		{
+			iCurveNum++;
+			iPointNum=iPointNum+vecCurveNetwork.at(i).Profile3D.at(j).size();
+		}
+	}
+	DBWindowWrite("No. of input cross section curves: %d\n",iCurveNum);
+	DBWindowWrite("No. of input points: %d\n",iPointNum);
 }

@@ -40,8 +40,9 @@ void KW_CS2Surf::RenderSubspaceStl()
 			{
 				continue;
 			}
-			//////test,for making the partition example only
-			//if (iFaceID==10 || iFaceID==35 || iFaceID==45 || iFaceID==67 || iFaceID==59)
+			////test,for making the partition example only
+			////if (iFaceID==10 || iFaceID==35 || iFaceID==45 || iFaceID==67 || iFaceID==59)
+			//if (iFaceID==31 || iFaceID==41 || iFaceID==43 || iFaceID==52 || iFaceID==72)
 			//{
 			//	glColor3f(0,0,1);
 			//}
@@ -96,7 +97,8 @@ void KW_CS2Surf::RenderSubspaceStl()
 			}
 
 			////test,for making the partition example only
-			//if (iFaceID==10 || iFaceID==35 || iFaceID==45 || iFaceID==67 || iFaceID==59)
+			////if (iFaceID==10 || iFaceID==35 || iFaceID==45 || iFaceID==67 || iFaceID==59)
+			//if (iFaceID==31 || iFaceID==41 || iFaceID==43 || iFaceID==52 || iFaceID==72)
 			//{
 			//	glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, blue_color);
 			//	glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION,  mat_blue_emission);
@@ -503,7 +505,8 @@ void KW_CS2Surf::RenderUnionPolyh()
 			mat_dif[0]=0.6;mat_dif[1]=0.3;mat_dif[2]=0.1;
 			break;
 		case 11:
-			mat_dif[0]=0.9;mat_dif[1]=0.8;mat_dif[2]=0.1;
+//			mat_dif[0]=0.9;mat_dif[1]=0.8;mat_dif[2]=0.1;
+			mat_dif[0]=0.9;mat_dif[1]=0.9;mat_dif[2]=0.3;
 			break;
 		default:
 			mat_dif[0]=1;mat_dif[1]=1;mat_dif[2]=0;
